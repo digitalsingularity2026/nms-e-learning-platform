@@ -35,6 +35,32 @@ export default async function FacultyModulePage({ params }: { params: Promise<{ 
   })
   if (!module) notFound()
 
+  const pendingAttempts = module.quiz ? await prisma.quizAttempt.findMany({
+    where: { quizId: module.quiz.id, status: "PENDING_REVIEW" },
+    include: {
+      student: { select: { id: true, name: true, email: true } },
+      answers: {
+        include: { question: { select: { id: true, type: true, text: true, points: true } } },
+      },
+    },
+    orderBy: { submittedAt: "desc" },
+  }) : []
+
+  const pending = pendingAttempts.map(a => ({
+    id: a.id,
+    score: a.score,
+    submittedAt: a.submittedAt?.toISOString() ?? null,
+    student: a.student,
+    shortAnswers: a.answers
+      .filter(ans => ans.question.type === "SHORT_ANSWER")
+      .map(ans => ({
+        questionId: ans.question.id,
+        questionText: ans.question.text,
+        points: ans.question.points,
+        textAnswer: ans.textAnswer,
+      })),
+  }))
+
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       <header className="flex items-center justify-between px-8" style={{ background: "#0C3D26", height: 60, flexShrink: 0 }}>
@@ -62,11 +88,11 @@ export default async function FacultyModulePage({ params }: { params: Promise<{ 
           instructions: module.quiz.instructions ?? "",
           questions: module.quiz.questions.map(q => ({
             id: q.id, text: q.text, type: q.type,
-            hintText: q.hintText,
-            points: q.points,
+            hintText: q.hintText, points: q.points,
             options: q.options.map(o => ({ id: o.id, text: o.text, isCorrect: o.isCorrect, matchText: o.matchText })),
           })),
         } : null}
+        pendingAttempts={pending}
       />
     </div>
   )

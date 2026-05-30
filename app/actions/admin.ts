@@ -12,11 +12,7 @@ async function checkAdmin() {
   return session
 }
 
-// ── USERS ─────────────────────────────────────────────────────────────────────
-
-export async function createUser(data: {
-  name: string; email: string; password: string; role: Role
-}) {
+export async function createUser(data: { name: string; email: string; password: string; role: Role }) {
   if (!await checkAdmin()) return { error: "Unauthorized" }
   const existing = await prisma.user.findUnique({ where: { email: data.email } })
   if (existing) return { error: "A user with this email already exists." }
@@ -47,8 +43,6 @@ export async function resetUserPassword(userId: string, newPassword: string) {
   return { success: true }
 }
 
-// ── GROUPS ────────────────────────────────────────────────────────────────────
-
 export async function createGroup(name: string, tutorId: string) {
   if (!await checkAdmin()) return { error: "Unauthorized" }
   await prisma.tutorGroup.create({ data: { name, tutorId } })
@@ -77,6 +71,24 @@ export async function assignStudentToGroup(studentId: string, groupId: string) {
 export async function removeStudentFromGroup(studentId: string) {
   if (!await checkAdmin()) return { error: "Unauthorized" }
   await prisma.groupMembership.deleteMany({ where: { studentId } })
+  revalidatePath("/dashboard/admin")
+  return { success: true }
+}
+
+export async function assignModuleToFaculty(facultyId: string, moduleId: string) {
+  if (!await checkAdmin()) return { error: "Unauthorized" }
+  await prisma.moduleFacultyAssignment.upsert({
+    where: { moduleId_facultyId: { moduleId, facultyId } },
+    update: {},
+    create: { moduleId, facultyId },
+  })
+  revalidatePath("/dashboard/admin")
+  return { success: true }
+}
+
+export async function removeModuleFromFaculty(facultyId: string, moduleId: string) {
+  if (!await checkAdmin()) return { error: "Unauthorized" }
+  await prisma.moduleFacultyAssignment.deleteMany({ where: { moduleId, facultyId } })
   revalidatePath("/dashboard/admin")
   return { success: true }
 }
