@@ -4,6 +4,7 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import { createLesson, updateLesson, deleteLesson, addYouTubeVideo, removeVideo, ensureQuiz, createQuestion, deleteQuestion, gradeShortAnswers } from "@/app/actions/faculty"
+import VideoUploader from "@/components/VideoUploader"
 
 const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), { ssr: false, loading: () => <div style={{ height: 200, background: "#F9F9F9", borderRadius: 10, border: "1.5px solid #E2D9CC", display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", fontSize: 13 }}>Loading editor…</div> })
 
@@ -40,8 +41,6 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
   const [tab, setTab]           = useState<"lessons" | "quiz" | "grading">("lessons")
   const [editingId, setEditingId] = useState<string | "new" | null>(null)
   const [form, setForm]         = useState(EMPTY_LESSON)
-  const [videoUrl, setVideoUrl] = useState("")
-  const [videoTitle, setVideoTitle] = useState("")
   const [qForm, setQForm]       = useState(emptyQForm())
   const [addingQ, setAddingQ]   = useState(false)
   const [saving, setSaving]     = useState(false)
@@ -66,16 +65,7 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
     await deleteLesson(id, module.id); refresh()
   }
 
-  async function handleAddVideo(lessonId: string) {
-    if (!videoUrl.trim()) return
-    await addYouTubeVideo(lessonId, module.id, videoTitle || "Video", videoUrl.trim())
-    setVideoUrl(""); setVideoTitle(""); refresh()
-  }
 
-  async function handleRemoveVideo(videoId: string) {
-    if (!window.confirm("Remove this video?")) return
-    await removeVideo(videoId, module.id); refresh()
-  }
 
   async function handleAddQuestion() {
     setSaving(true)
@@ -163,104 +153,12 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
                     <label style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", display: "block", marginBottom: 5, letterSpacing: "0.08em" }}>CONTENT</label>
                     <RichTextEditor content={form.content} onChange={html => setForm(p => ({ ...p, content: html }))} />
                   </div>
-                  <div style={{ marginBottom: 16, background: "#fff", borderRadius: 10, padding: "16px 18px", border: "1px solid #E2D9CC" }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", marginBottom: 10, letterSpacing: "0.08em" }}>VIDEO (OPTIONAL)</div>
-                    {editingLesson?.videos.map(v => (
-                      <div key={v.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#F7F3ED", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
-                        <div><div style={{ fontSize: 13, fontWeight: 500 }}>{v.title}</div><div style={{ fontSize: 11, color: "#9CA3AF" }}>{v.url.slice(0, 48)}…</div></div>
-                        <button onClick={() => handleRemoveVideo(v.id)} style={{ background: "none", border: "none", color: "#B91C1C", fontSize: 13, cursor: "pointer" }}>✕</button>
-                      </div>
-                    ))}
-                    {(editingLesson?.videos.length ?? 0) === 0 && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <input value={videoTitle} onChange={e => setVideoTitle(e.target.value)} placeholder="Video title" style={{ padding: "8px 12px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 13, outline: "none" }} />
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <input value={videoUrl} onChange={e => setVideoUrl(e.target.value)} placeholder="YouTube URL" style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 13, outline: "none" }} />
-                          <button onClick={() => editingId && editingId !== "new" && handleAddVideo(editingId)} style={{ background: "#E3F0E9", color: "#0C3D26", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Add</button>
-                        </div>
-                        {editingId === "new" && <p style={{ fontSize: 11, color: "#9CA3AF" }}>Save the lesson first, then add a video.</p>}
-                      </div>
-                    )}
-                  </div>
-                  <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                    <input type="checkbox" checked={form.isPublished} onChange={e => setForm(p => ({ ...p, isPublished: e.target.checked }))} style={{ width: 16, height: 16, accentColor: "#0C3D26" }} />
-                    <span style={{ fontSize: 14, color: "#374151" }}>Published — visible to students</span>
-                  </label>
-                </div>
-              ) : (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", flexDirection: "column", gap: 10 }}>
-                  <div style={{ fontSize: 36 }}>📝</div>
-                  <p style={{ fontSize: 14 }}>Select a lesson or click New.</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* QUIZ TAB */}
-          {tab === "quiz" && (
-            <div style={{ padding: "28px 36px", maxWidth: 800 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                <div>
-                  <h2 style={{ fontFamily: "serif", fontSize: 20, color: "#0C3D26", margin: "0 0 4px", fontWeight: 600 }}>Module Quiz</h2>
-                  <p style={{ fontSize: 13, color: "#6B7280", margin: 0 }}>Questions are shown to students in the order listed below.</p>
-                </div>
-                <button onClick={() => setAddingQ(true)} style={{ background: "#0C3D26", color: "#fff", border: "none", borderRadius: 8, padding: "9px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Add Question</button>
-              </div>
-
-              {(initialQuiz?.questions.length ?? 0) === 0 && !addingQ && (
-                <div style={{ background: "#fff", borderRadius: 12, padding: "28px", border: "1px dashed #E2D9CC", textAlign: "center", color: "#9CA3AF", marginBottom: 16 }}>
-                  <div style={{ fontSize: 30, marginBottom: 8 }}>📋</div>
-                  <p style={{ fontSize: 14 }}>No questions yet. Click Add Question to build the quiz.</p>
-                </div>
-              )}
-              {initialQuiz?.questions.map((q, i) => (
-                <div key={q.id} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", marginBottom: 10, border: "1px solid #E2D9CC" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div style={{ flex: 1, paddingRight: 12 }}>
-                      <div style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
-                        <span style={{ fontSize: 10, background: "#EEF2F8", color: "#1A3A6B", fontWeight: 700, padding: "2px 8px", borderRadius: 100 }}>{TYPE_LABEL[q.type] ?? q.type}</span>
-                        {q.type !== "PASSAGE" && <span style={{ fontSize: 10, color: "#9CA3AF" }}>{q.points} pt{q.points !== 1 ? "s" : ""}</span>}
-                      </div>
-                      <p style={{ fontWeight: q.type === "PASSAGE" ? 400 : 600, color: q.type === "PASSAGE" ? "#6B7280" : "#111", margin: 0, fontSize: 13, lineHeight: 1.5 }}>
-                        {q.type === "PASSAGE" ? `📖 Reading passage (${q.text.length} chars)` : `${i + 1}. ${q.text}`}
-                      </p>
-                      {q.type === "MATCHING" && (
-                        <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 5 }}>
-                          {q.options.map(o => <span key={o.id} style={{ fontSize: 11, background: "#F3F4F6", padding: "2px 8px", borderRadius: 6, color: "#374151" }}>{o.text} → {o.matchText}</span>)}
-                        </div>
-                      )}
-                      {(q.type === "MCQ" || q.type === "MSQ" || q.type === "TRUE_FALSE") && (
-                        <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 5 }}>
-                          {q.options.map(o => <span key={o.id} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 100, background: o.isCorrect ? "#E3F0E9" : "#F3F4F6", color: o.isCorrect ? "#0C3D26" : "#6B7280", fontWeight: o.isCorrect ? 600 : 400 }}>{o.isCorrect && "✓ "}{o.text}</span>)}
-                        </div>
-                      )}
-                      {(q.type === "CLOZE" || q.type === "SENTENCE_COMPLETION") && (
-                        <div style={{ marginTop: 6, fontSize: 12, color: "#6B7280" }}>
-                          Correct: <strong style={{ color: "#0C3D26" }}>{q.options[0]?.text}</strong>
-                          {q.hintText && <span style={{ marginLeft: 8 }}>· Hint: ({q.hintText})</span>}
-                        </div>
-                      )}
-                      {q.type === "SHORT_ANSWER" && <div style={{ marginTop: 4, fontSize: 11, color: "#B47E2A" }}>⚠ Requires manual grading</div>}
-                    </div>
-                    <button onClick={() => handleDeleteQ(q.id)} style={{ background: "none", border: "none", color: "#B91C1C", fontSize: 13, cursor: "pointer", flexShrink: 0, padding: "0 4px" }}>✕</button>
-                  </div>
-                </div>
-              ))}
-
-              {addingQ && (
-                <div style={{ background: "#fff", borderRadius: 12, padding: "22px 24px", border: "1.5px solid #0C3D26", marginTop: 12 }}>
-                  <h3 style={{ fontFamily: "serif", fontSize: 17, color: "#0C3D26", margin: "0 0 16px", fontWeight: 600 }}>New Question</h3>
-                  <div style={{ marginBottom: 16 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", letterSpacing: "0.08em", display: "block", marginBottom: 8 }}>QUESTION TYPE</label>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {ALL_TYPES.map(t => (
-                        <button key={t.value} type="button" onClick={() => setQForm(p => ({ ...emptyQForm(), type: t.value }))}
-                          style={{ padding: "5px 13px", borderRadius: 8, border: `1.5px solid ${Q.type === t.value ? "#0C3D26" : "#E2D9CC"}`, background: Q.type === t.value ? "#E3F0E9" : "#fff", color: Q.type === t.value ? "#0C3D26" : "#6B7280", fontSize: 12, fontWeight: Q.type === t.value ? 600 : 400, cursor: "pointer" }}>
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  <VideoUploader
+                    lessonId={editingId !== "new" ? editingId : null}
+                    moduleId={module.id}
+                    existingVideos={editingLesson?.videos ?? []}
+                    onUpdate={refresh}
+                  />
 
                   {Q.type === "PASSAGE" && (
                     <div style={{ marginBottom: 14 }}>

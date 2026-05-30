@@ -175,3 +175,13 @@ export async function gradeShortAnswers(
   revalidatePath(`/dashboard/faculty/module/${moduleId}`)
   return { success: true, score, passed }
 }
+
+export async function addSelfHostedVideo(lessonId: string, moduleId: string, title: string, url: string, r2Key: string) {
+  if (!await checkFacultyAccess(moduleId)) return { error: "Unauthorized" }
+  const count = await prisma.videoResource.count({ where: { lessonId } })
+  await prisma.videoResource.create({
+    data: { lessonId, title, url, type: "SELF_HOSTED", r2Key, orderIndex: count },
+  })
+  revalidatePath(`/dashboard/faculty/module/${moduleId}`)
+  return { success: true }
+}

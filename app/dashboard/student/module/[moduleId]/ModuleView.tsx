@@ -111,13 +111,18 @@ function LessonView({ lesson, videoOpen, setVideoOpen }: { lesson: any; videoOpe
 
       {video && (
         <div style={{ background: "#111827", borderRadius: 12, marginBottom: 28, overflow: "hidden" }}>
-          {videoOpen && ytId ? (
+          {video.type === "SELF_HOSTED" ? (
+            <video controls preload="metadata" style={{ width: "100%", height: 340, display: "block", background: "#000" }}>
+              <source src={video.url} />
+              <p style={{ color: "#fff", padding: 20, margin: 0 }}>Your browser does not support this video format.</p>
+            </video>
+          ) : videoOpen && ytId ? (
             <iframe src={`https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`} style={{ width: "100%", height: 340, border: "none", display: "block" }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
           ) : (
-            <div onClick={() => video.type === "YOUTUBE" ? setVideoOpen(true) : window.open(video.url, "_blank")} style={{ height: 180, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+            <div onClick={() => setVideoOpen(true)} style={{ height: 180, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
               <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "1.5px solid rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "#fff", marginBottom: 12 }}>▶</div>
               <div style={{ color: "#fff", fontWeight: 500, fontSize: 14 }}>{video.title}</div>
-              <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4 }}>{video.type === "YOUTUBE" ? "Click to play · Requires internet" : "Click to download"}</div>
+              <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4 }}>Click to play · Requires internet</div>
             </div>
           )}
         </div>
