@@ -42,6 +42,6 @@
     "seed": "npx tsx prisma/seed.ts"
   },
   "engines": {
-    "node": ">=20"
+    "node": "20.x"
   }
 }
