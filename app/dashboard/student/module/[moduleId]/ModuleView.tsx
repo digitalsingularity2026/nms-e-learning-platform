@@ -1,0 +1,129 @@
+"use client"
+
+import { useState } from "react"
+import QuizPanel from "./QuizPanel"
+
+type Video  = { id: string; title: string; type: string; url: string }
+type Lesson = { id: string; title: string; content: string; videos: Video[] }
+type Option = { id: string; text: string; matchText?: string | null }
+type Question = { id: string; text: string; type: string; hintText?: string | null; points: number; explanation?: string | null; options: Option[] }
+type Quiz  = { id: string; title: string; instructions: string | null; questions: Question[] }
+
+interface Props {
+  module: { id: string; code: string; title: string; credits: number; passMark: number; description: string | null }
+  lessons: Lesson[]
+  quiz: Quiz | null
+  hasPassedQuiz: boolean
+}
+
+const OBJECTIVES: Record<string, string[]> = {
+  "ENG-101":   ["Read and analyse medical texts at B1+/B2 level", "Apply medical vocabulary and clinical abbreviations", "Write academic essays and clinical communication texts", "Develop listening and speaking skills for clinical discussions"],
+  "CHEM-101":  ["Understand carbon bonding and molecular structure", "Identify functional groups and their biological significance", "Relate organic chemistry to pharmacology and biochemistry", "Solve problems involving molecular structure"],
+  "PHYS-101":  ["Apply mechanics to body movement and physiological forces", "Understand wave physics as it relates to imaging", "Explain electrical principles relevant to cardiac physiology", "Describe the physical basis of radiation and its medical uses"],
+  "BIO-101":   ["Describe cell structure, organelles, and the cell cycle", "Explain DNA replication, transcription, and translation", "Understand Mendelian genetics and inheritance", "Apply biological concepts to mechanisms of human disease"],
+  "STUDY-101": ["Apply evidence-based strategies for deep medical study", "Manage time across multiple concurrent demands", "Demonstrate academic integrity and correct citation practices", "Use self-assessment tools to monitor learning progress"],
+  "ETH-101":   ["Identify core biomedical ethics principles", "Recognise ethical dilemmas in resource-limited settings", "Understand the foundations of professional conduct", "Apply ethical reasoning to case-based scenarios"],
+}
+
+function extractYoutubeId(url: string): string | null {
+  const m = url.match(/(?:v=|youtu\.be\/)([^&\s]+)/)
+  return m ? m[1] : null
+}
+
+export default function ModuleView({ module, lessons, quiz, hasPassedQuiz }: Props) {
+  const [activeLessonId, setActiveLessonId] = useState<string | null>(lessons[0]?.id ?? null)
+  const [showQuiz, setShowQuiz]   = useState(false)
+  const [videoOpen, setVideoOpen] = useState(false)
+
+  const activeLesson = lessons.find(l => l.id === activeLessonId)
+  const objectives   = OBJECTIVES[module.code] ?? []
+
+  return (
+    <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      {/* Sidebar */}
+      <aside style={{ width: 268, background: "#fff", borderRight: "1px solid #E2D9CC", display: "flex", flexDirection: "column", flexShrink: 0, overflowY: "auto" }}>
+        <div style={{ padding: "20px 18px 16px", borderBottom: "1px solid #F0EAE0" }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#B0A090", letterSpacing: "0.12em", marginBottom: 8 }}>LEARNING OBJECTIVES</div>
+          <ul style={{ margin: 0, paddingLeft: 16 }}>
+            {objectives.map((obj, i) => <li key={i} style={{ fontSize: 11.5, color: "#374151", lineHeight: 1.55, marginBottom: 6 }}>{obj}</li>)}
+          </ul>
+        </div>
+
+        <div style={{ paddingTop: 16, flex: 1 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#B0A090", letterSpacing: "0.12em", padding: "0 18px", marginBottom: 6 }}>LESSONS</div>
+          {lessons.length === 0 && <p style={{ fontSize: 12, color: "#C5BAB0", padding: "6px 18px" }}>No lessons published yet.</p>}
+          {lessons.map(l => {
+            const active = !showQuiz && l.id === activeLessonId
+            return (
+              <button key={l.id} onClick={() => { setActiveLessonId(l.id); setShowQuiz(false); setVideoOpen(false) }}
+                style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 18px", border: "none", cursor: "pointer", fontFamily: "inherit", background: active ? "#E8F3EC" : "none", borderLeft: active ? "3px solid #0C3D26" : "3px solid transparent" }}>
+                <div style={{ fontSize: 12.5, fontWeight: active ? 600 : 400, color: active ? "#0C3D26" : "#374151", lineHeight: 1.4 }}>{l.title}</div>
+                <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>Reading{l.videos.length > 0 ? " + Video" : ""}</div>
+              </button>
+            )
+          })}
+
+          {quiz && (
+            <>
+              <div style={{ height: 1, background: "#F0EAE0", margin: "10px 18px" }} />
+              <button onClick={() => setShowQuiz(true)}
+                style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 18px", border: "none", cursor: "pointer", fontFamily: "inherit", background: showQuiz ? "#FBF4E3" : "none", borderLeft: showQuiz ? "3px solid #B47E2A" : "3px solid transparent" }}>
+                <div style={{ fontSize: 12.5, fontWeight: showQuiz ? 600 : 500, color: "#B47E2A" }}>
+                  📝 Module Quiz{hasPassedQuiz ? " ✓" : ""}
+                </div>
+                <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>
+                  {quiz.questions.filter(q => q.type !== "PASSAGE").length} questions · Pass: {module.passMark}%{hasPassedQuiz ? " · Passed" : ""}
+                </div>
+              </button>
+            </>
+          )}
+        </div>
+      </aside>
+
+      {/* Main */}
+      <main style={{ flex: 1, overflowY: "auto", padding: "36px 52px" }}>
+        {showQuiz && quiz ? (
+          <QuizPanel quiz={quiz} moduleId={module.id} passMark={module.passMark} hasPassedQuiz={hasPassedQuiz} />
+        ) : activeLesson ? (
+          <LessonView lesson={activeLesson} videoOpen={videoOpen} setVideoOpen={setVideoOpen} />
+        ) : (
+          <div style={{ textAlign: "center", marginTop: 80, color: "#9CA3AF" }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>📚</div>
+            <p style={{ fontSize: 14 }}>No lessons available yet for this module.</p>
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}
+
+function LessonView({ lesson, videoOpen, setVideoOpen }: { lesson: any; videoOpen: boolean; setVideoOpen: (v: boolean) => void }) {
+  const video = lesson.videos[0]
+  const ytId  = video?.type === "YOUTUBE" ? (video.url.match(/(?:v=|youtu\.be\/)([^&\s]+)/)?.[1] ?? null) : null
+
+  return (
+    <div>
+      <h1 style={{ fontFamily: "serif", fontSize: 26, color: "#0C3D26", margin: "0 0 8px", fontWeight: 600 }}>{lesson.title}</h1>
+      <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+        <span style={{ fontSize: 10, background: "#E3F0E9", color: "#0C3D26", padding: "3px 10px", borderRadius: 100, fontWeight: 700, letterSpacing: "0.05em" }}>READING</span>
+        {video && <span style={{ fontSize: 10, background: "#FBF4E3", color: "#B47E2A", padding: "3px 10px", borderRadius: 100, fontWeight: 700, letterSpacing: "0.05em" }}>VIDEO</span>}
+      </div>
+
+      {video && (
+        <div style={{ background: "#111827", borderRadius: 12, marginBottom: 28, overflow: "hidden" }}>
+          {videoOpen && ytId ? (
+            <iframe src={`https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`} style={{ width: "100%", height: 340, border: "none", display: "block" }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+          ) : (
+            <div onClick={() => video.type === "YOUTUBE" ? setVideoOpen(true) : window.open(video.url, "_blank")} style={{ height: 180, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+              <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "1.5px solid rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, color: "#fff", marginBottom: 12 }}>▶</div>
+              <div style={{ color: "#fff", fontWeight: 500, fontSize: 14 }}>{video.title}</div>
+              <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4 }}>{video.type === "YOUTUBE" ? "Click to play · Requires internet" : "Click to download"}</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="lesson-prose" style={{ background: "#fff", borderRadius: 12, padding: "28px 32px", border: "1px solid #E2D9CC", lineHeight: 1.75, fontSize: 15, color: "#2D2D2D" }} dangerouslySetInnerHTML={{ __html: lesson.content }} />
+    </div>
+  )
+}
