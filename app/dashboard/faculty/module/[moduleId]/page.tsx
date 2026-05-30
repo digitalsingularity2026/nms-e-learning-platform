@@ -50,7 +50,7 @@ export default async function FacultyModulePage({ params }: { params: Promise<{ 
     id: a.id,
     score: a.score,
     submittedAt: a.submittedAt?.toISOString() ?? null,
-    student: a.student,
+    student: { id: a.student.id, name: a.student.name ?? "", email: a.student.email },
     shortAnswers: a.answers
       .filter(ans => ans.question.type === "SHORT_ANSWER")
       .map(ans => ({
