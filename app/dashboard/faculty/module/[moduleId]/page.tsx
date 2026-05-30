@@ -53,10 +53,19 @@ export default async function FacultyModulePage({ params }: { params: Promise<{ 
 
       <FacultyModuleView
         module={{ id: module.id, code: module.code, title: module.title, isPublished: module.isPublished }}
-        lessons={module.lessons.map(l => ({ id: l.id, title: l.title, content: l.content, isPublished: l.isPublished, videos: l.videos.map(v => ({ id: v.id, title: v.title, url: v.url, type: v.type })) }))}
+        lessons={module.lessons.map(l => ({
+          id: l.id, title: l.title, content: l.content, isPublished: l.isPublished,
+          videos: l.videos.map(v => ({ id: v.id, title: v.title, url: v.url, type: v.type })),
+        }))}
         quiz={module.quiz ? {
-          id: module.quiz.id, instructions: module.quiz.instructions ?? "",
-          questions: module.quiz.questions.map(q => ({ id: q.id, text: q.text, type: q.type, options: q.options.map(o => ({ id: o.id, text: o.text, isCorrect: o.isCorrect })) })),
+          id: module.quiz.id,
+          instructions: module.quiz.instructions ?? "",
+          questions: module.quiz.questions.map(q => ({
+            id: q.id, text: q.text, type: q.type,
+            hintText: q.hintText,
+            points: q.points,
+            options: q.options.map(o => ({ id: o.id, text: o.text, isCorrect: o.isCorrect, matchText: o.matchText })),
+          })),
         } : null}
       />
     </div>
