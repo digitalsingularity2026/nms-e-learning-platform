@@ -105,6 +105,12 @@ export default function LoginPage() {
           >
             {loading ? "Signing in…" : "Sign In →"}
           </button>
+
+          <p className="text-center">
+            <a href="/forgot-password" className="text-xs" style={{ color: "#6B7280" }}>
+              Forgot your password?
+            </a>
+          </p>
         </form>
       </div>
     </main>
