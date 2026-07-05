@@ -8,7 +8,7 @@ export default async function AdminPage() {
   const session = await auth()
   if (!session || (session.user.role !== "SCHOOL_ADMIN" && session.user.role !== "IT_ADMIN")) redirect("/login")
 
-  const [users, groups, modulesData, assignmentsData] = await Promise.all([
+  const [users, groups, modulesData, assignmentsData, gradesData] = await Promise.all([
     prisma.user.findMany({
       orderBy: { createdAt: "desc" },
       include: { groupMembership: { include: { group: true } } },
@@ -26,6 +26,20 @@ export default async function AdminPage() {
       },
     }),
     prisma.moduleFacultyAssignment.findMany(),
+    prisma.grade.findMany({
+      where: { status: { in: ["IN_REVIEW", "APPROVED"] } },
+      orderBy: { draftedAt: "asc" },
+      include: {
+        primaryMarker: { select: { id: true, name: true } },
+        reviewer:      { select: { id: true, name: true } },
+        submission: {
+          include: {
+            student: { select: { name: true, studentIdNumber: true } },
+            assessment: { select: { title: true, maxMark: true, module: { select: { id: true, code: true } } } },
+          },
+        },
+      },
+    }),
   ])
 
   const stats = {
@@ -87,6 +101,22 @@ export default async function AdminPage() {
         tutors={tutors.map(t => ({ id: t.id, name: t.name ?? "" }))}
         facultyAssignments={facultyAssignments}
         stats={stats}
+        gradeQueue={gradesData.map(g => ({
+          gradeId: g.id,
+          status: g.status,
+          mark: g.mark,
+          feedback: g.feedback,
+          markerId: g.primaryMarkerId,
+          markerName: g.primaryMarker?.name ?? "—",
+          reviewerName: g.reviewer?.name ?? null,
+          studentName: g.submission.student.name ?? "",
+          studentIdNumber: g.submission.student.studentIdNumber,
+          assessmentTitle: g.submission.assessment.title,
+          maxMark: g.submission.assessment.maxMark,
+          moduleId: g.submission.assessment.module.id,
+          moduleCode: g.submission.assessment.module.code,
+          draftedAt: g.draftedAt?.toISOString() ?? null,
+        }))}
       />
     </div>
   )

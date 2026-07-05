@@ -32,6 +32,16 @@ export default async function ModulePage({ params }: { params: Promise<{ moduleI
             },
           },
         },
+        assessments: {
+          where: { isPublished: true },
+          orderBy: { createdAt: "asc" },
+          include: {
+            submissions: {
+              where: { studentId },
+              include: { grade: true },
+            },
+          },
+        },
       },
     }),
     prisma.moduleProgress.findUnique({
@@ -85,6 +95,27 @@ export default async function ModulePage({ params }: { params: Promise<{ moduleI
           })),
         } : null}
         hasPassedQuiz={hasPassedQuiz}
+        assessments={module.assessments.map(a => {
+          const sub = a.submissions[0] ?? null
+          const grade = sub?.grade ?? null
+          // only expose the grade once the registrar publishes it
+          const published = grade?.status === "PUBLISHED"
+          return {
+            id: a.id, title: a.title, description: a.description,
+            maxMark: a.maxMark, passMark: a.passMark,
+            dueDate: a.dueDate?.toISOString() ?? null,
+            submission: sub ? {
+              textContent: sub.textContent ?? "",
+              submittedAt: sub.submittedAt.toISOString(),
+              inGrading: !!grade,
+              grade: published && grade ? {
+                mark: grade.mark ?? 0,
+                feedback: grade.feedback,
+                publishedAt: grade.publishedAt?.toISOString() ?? null,
+              } : null,
+            } : null,
+          }
+        })}
       />
     </div>
   )

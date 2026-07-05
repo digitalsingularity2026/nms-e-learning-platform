@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import QuizPanel from "./QuizPanel"
+import AssessmentPanel, { type StudentAssessment } from "./AssessmentPanel"
 import { fileIcon, fileKindLabel, formatFileSize, isAudioFile } from "@/lib/files"
 
 type Video  = { id: string; title: string; type: string; url: string }
@@ -16,6 +17,7 @@ interface Props {
   lessons: Lesson[]
   quiz: Quiz | null
   hasPassedQuiz: boolean
+  assessments: StudentAssessment[]
 }
 
 const OBJECTIVES: Record<string, string[]> = {
@@ -32,13 +34,15 @@ function extractYoutubeId(url: string): string | null {
   return m ? m[1] : null
 }
 
-export default function ModuleView({ module, lessons, quiz, hasPassedQuiz }: Props) {
+export default function ModuleView({ module, lessons, quiz, hasPassedQuiz, assessments }: Props) {
   const [activeLessonId, setActiveLessonId] = useState<string | null>(lessons[0]?.id ?? null)
   const [showQuiz, setShowQuiz]   = useState(false)
+  const [activeAssessmentId, setActiveAssessmentId] = useState<string | null>(null)
   const [videoOpen, setVideoOpen] = useState(false)
 
-  const activeLesson = lessons.find(l => l.id === activeLessonId)
-  const objectives   = OBJECTIVES[module.code] ?? []
+  const activeLesson     = lessons.find(l => l.id === activeLessonId)
+  const activeAssessment = assessments.find(a => a.id === activeAssessmentId)
+  const objectives       = OBJECTIVES[module.code] ?? []
 
   return (
     <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
@@ -57,7 +61,7 @@ export default function ModuleView({ module, lessons, quiz, hasPassedQuiz }: Pro
           {lessons.map(l => {
             const active = !showQuiz && l.id === activeLessonId
             return (
-              <button key={l.id} onClick={() => { setActiveLessonId(l.id); setShowQuiz(false); setVideoOpen(false) }}
+              <button key={l.id} onClick={() => { setActiveLessonId(l.id); setShowQuiz(false); setActiveAssessmentId(null); setVideoOpen(false) }}
                 style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 18px", border: "none", cursor: "pointer", fontFamily: "inherit", background: active ? "#E8F3EC" : "none", borderLeft: active ? "3px solid #0C3D26" : "3px solid transparent" }}>
                 <div style={{ fontSize: 12.5, fontWeight: active ? 600 : 400, color: active ? "#0C3D26" : "#374151", lineHeight: 1.4 }}>{l.title}</div>
                 <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>Reading{l.videos.length > 0 ? " + Video" : ""}{l.files.length > 0 ? " + Materials" : ""}</div>
@@ -68,7 +72,7 @@ export default function ModuleView({ module, lessons, quiz, hasPassedQuiz }: Pro
           {quiz && (
             <>
               <div style={{ height: 1, background: "#F0EAE0", margin: "10px 18px" }} />
-              <button onClick={() => setShowQuiz(true)}
+              <button onClick={() => { setShowQuiz(true); setActiveAssessmentId(null) }}
                 style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 18px", border: "none", cursor: "pointer", fontFamily: "inherit", background: showQuiz ? "#FBF4E3" : "none", borderLeft: showQuiz ? "3px solid #B47E2A" : "3px solid transparent" }}>
                 <div style={{ fontSize: 12.5, fontWeight: showQuiz ? 600 : 500, color: "#B47E2A" }}>
                   📝 Module Quiz{hasPassedQuiz ? " ✓" : ""}
@@ -79,6 +83,29 @@ export default function ModuleView({ module, lessons, quiz, hasPassedQuiz }: Pro
               </button>
             </>
           )}
+
+          {assessments.length > 0 && (
+            <>
+              <div style={{ height: 1, background: "#F0EAE0", margin: "10px 18px" }} />
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#B0A090", letterSpacing: "0.12em", padding: "0 18px", marginBottom: 6 }}>ASSIGNMENTS</div>
+              {assessments.map(a => {
+                const active = a.id === activeAssessmentId
+                const grade = a.submission?.grade ?? null
+                const statusLine = grade
+                  ? `Graded: ${grade.mark}/${a.maxMark}`
+                  : a.submission
+                  ? (a.submission.inGrading ? "Submitted · being graded" : "Submitted ✓")
+                  : "Not submitted"
+                return (
+                  <button key={a.id} onClick={() => { setActiveAssessmentId(a.id); setShowQuiz(false); setVideoOpen(false) }}
+                    style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 18px", border: "none", cursor: "pointer", fontFamily: "inherit", background: active ? "#F0F0FF" : "none", borderLeft: active ? "3px solid #2D1A6B" : "3px solid transparent" }}>
+                    <div style={{ fontSize: 12.5, fontWeight: active ? 600 : 500, color: "#2D1A6B", lineHeight: 1.4 }}>✍️ {a.title}</div>
+                    <div style={{ fontSize: 10, color: grade ? (grade.mark >= a.passMark ? "#0C3D26" : "#B91C1C") : "#9CA3AF", marginTop: 2 }}>{statusLine}</div>
+                  </button>
+                )
+              })}
+            </>
+          )}
         </div>
       </aside>
 
@@ -86,6 +113,8 @@ export default function ModuleView({ module, lessons, quiz, hasPassedQuiz }: Pro
       <main style={{ flex: 1, overflowY: "auto", padding: "36px 52px" }}>
         {showQuiz && quiz ? (
           <QuizPanel quiz={quiz} moduleId={module.id} passMark={module.passMark} hasPassedQuiz={hasPassedQuiz} />
+        ) : activeAssessment ? (
+          <AssessmentPanel key={activeAssessment.id} assessment={activeAssessment} moduleId={module.id} />
         ) : activeLesson ? (
           <LessonView lesson={activeLesson} videoOpen={videoOpen} setVideoOpen={setVideoOpen} />
         ) : (

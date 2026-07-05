@@ -34,9 +34,38 @@ export default async function FacultyModulePage({ params }: { params: Promise<{ 
           },
         },
       },
+      assessments: {
+        orderBy: { createdAt: "asc" },
+        include: {
+          submissions: {
+            orderBy: { submittedAt: "asc" },
+            include: {
+              student: { select: { id: true, name: true, email: true, studentIdNumber: true } },
+              grade: {
+                include: {
+                  primaryMarker: { select: { id: true, name: true } },
+                  reviewer:      { select: { id: true, name: true } },
+                  registrar:     { select: { id: true, name: true } },
+                  auditLog:      { orderBy: { timestamp: "asc" } },
+                },
+              },
+            },
+          },
+        },
+      },
     },
   })
   if (!module) notFound()
+
+  // GradeAudit stores actorId without a relation — resolve names for the history timeline
+  const auditActorIds = new Set<string>()
+  for (const a of module.assessments)
+    for (const s of a.submissions)
+      for (const e of s.grade?.auditLog ?? []) auditActorIds.add(e.actorId)
+  const auditActors = auditActorIds.size > 0
+    ? await prisma.user.findMany({ where: { id: { in: [...auditActorIds] } }, select: { id: true, name: true } })
+    : []
+  const actorName = new Map(auditActors.map(u => [u.id, u.name ?? "Unknown"]))
 
   const pendingAttempts = module.quiz ? await prisma.quizAttempt.findMany({
     where: { quizId: module.quiz.id, status: "PENDING_REVIEW" },
@@ -97,6 +126,29 @@ export default async function FacultyModulePage({ params }: { params: Promise<{ 
           })),
         } : null}
         pendingAttempts={pending}
+        currentUserId={session.user.id}
+        assessments={module.assessments.map(a => ({
+          id: a.id, title: a.title, description: a.description,
+          maxMark: a.maxMark, passMark: a.passMark,
+          dueDate: a.dueDate?.toISOString() ?? null,
+          isPublished: a.isPublished,
+          submissions: a.submissions.map(s => ({
+            id: s.id, textContent: s.textContent, submittedAt: s.submittedAt.toISOString(),
+            student: { id: s.student.id, name: s.student.name ?? "", email: s.student.email, studentIdNumber: s.student.studentIdNumber },
+            grade: s.grade ? {
+              id: s.grade.id, status: s.grade.status, mark: s.grade.mark,
+              feedback: s.grade.feedback, reviewerNote: s.grade.reviewerNote,
+              primaryMarker: s.grade.primaryMarker ? { id: s.grade.primaryMarker.id, name: s.grade.primaryMarker.name ?? "" } : null,
+              reviewer:  s.grade.reviewer  ? { id: s.grade.reviewer.id,  name: s.grade.reviewer.name ?? "" }  : null,
+              registrar: s.grade.registrar ? { id: s.grade.registrar.id, name: s.grade.registrar.name ?? "" } : null,
+              audit: s.grade.auditLog.map(e => ({
+                id: e.id, actorName: actorName.get(e.actorId) ?? "Unknown",
+                fromStatus: e.fromStatus, toStatus: e.toStatus, note: e.note,
+                timestamp: e.timestamp.toISOString(),
+              })),
+            } : null,
+          })),
+        }))}
       />
     </div>
   )

@@ -6,6 +6,7 @@ import dynamic from "next/dynamic"
 import { createLesson, updateLesson, deleteLesson, ensureQuiz, createQuestion, deleteQuestion, gradeShortAnswers } from "@/app/actions/faculty"
 import VideoUploader from "@/components/VideoUploader"
 import AttachmentUploader from "@/components/AttachmentUploader"
+import AssessmentsPanel, { type AssessmentInfo } from "./AssessmentsPanel"
 
 const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), { ssr: false, loading: () => <div style={{ height: 200, background: "#F9F9F9", borderRadius: 10, border: "1.5px solid #E2D9CC", display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", fontSize: 13 }}>Loading editor…</div> })
 
@@ -34,13 +35,14 @@ function emptyQForm() {
   return { type: "MCQ", text: "", options: ["", "", "", ""], optionCorrect: [false, false, false, false] as boolean[], correctTF: "True" as "True" | "False", correctAnswer: "", hintText: "", pairs: [{ left: "", right: "" }, { left: "", right: "" }], points: 2, explanation: "", passageContent: "" }
 }
 
-export default function FacultyModuleView({ module, lessons: initialLessons, quiz: initialQuiz, pendingAttempts }: {
+export default function FacultyModuleView({ module, lessons: initialLessons, quiz: initialQuiz, pendingAttempts, assessments, currentUserId }: {
   module: { id: string; code: string; title: string; isPublished: boolean }
   lessons: Lesson[]; quiz: Quiz | null; pendingAttempts: PendingAttempt[]
+  assessments: AssessmentInfo[]; currentUserId: string
 }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
-  const [tab, setTab]             = useState<"lessons" | "quiz" | "grading">("lessons")
+  const [tab, setTab]             = useState<"lessons" | "quiz" | "assessments" | "grading">("lessons")
   const [editingId, setEditingId] = useState<string | "new" | null>(null)
   const [form, setForm]           = useState(EMPTY_LESSON)
   const [qForm, setQForm]         = useState(emptyQForm())
@@ -108,10 +110,10 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
 
         {/* Tab bar */}
         <div style={{ borderBottom: "1px solid #E2D9CC", background: "#fff", display: "flex", paddingLeft: 28, flexShrink: 0 }}>
-          {(["lessons", "quiz", "grading"] as const).map(t => (
+          {(["lessons", "quiz", "assessments", "grading"] as const).map(t => (
             <button key={t} onClick={() => { setTab(t); setEditingId(null); setAddingQ(false); setGradingId(null) }}
               style={{ padding: "14px 22px", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: tab === t ? 600 : 400, color: tab === t ? (t === "grading" && pendingAttempts.length > 0 ? "#B47E2A" : "#0C3D26") : "#6B7280", background: "none", borderBottom: tab === t ? `2px solid ${t === "grading" && pendingAttempts.length > 0 ? "#B47E2A" : "#0C3D26"}` : "2px solid transparent" }}>
-              {t === "lessons" ? `📄 Lessons (${initialLessons.length})` : t === "quiz" ? `📝 Quiz (${initialQuiz?.questions.length ?? 0})` : `✏️ Pending Grading${pendingAttempts.length > 0 ? ` (${pendingAttempts.length})` : ""}`}
+              {t === "lessons" ? `📄 Lessons (${initialLessons.length})` : t === "quiz" ? `📝 Quiz (${initialQuiz?.questions.length ?? 0})` : t === "assessments" ? `📋 Assessments (${assessments.length})` : `✏️ Pending Grading${pendingAttempts.length > 0 ? ` (${pendingAttempts.length})` : ""}`}
             </button>
           ))}
         </div>
@@ -372,6 +374,11 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
                 </div>
               )}
             </div>
+          )}
+
+          {/* ── ASSESSMENTS TAB ────────────────────────────────────────── */}
+          {tab === "assessments" && (
+            <AssessmentsPanel moduleId={module.id} currentUserId={currentUserId} assessments={assessments} onUpdate={refresh} />
           )}
 
           {/* ── PENDING GRADING TAB ────────────────────────────────────── */}

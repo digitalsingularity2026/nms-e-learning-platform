@@ -3,7 +3,16 @@
 import { useState, useTransition, Fragment } from "react"
 import { useRouter } from "next/navigation"
 import { createUser, updateUserRole, toggleUserActive, resetUserPassword, updateStudentIdNumber, createGroup, deleteGroup, assignStudentToGroup, removeStudentFromGroup, assignModuleToFaculty, removeModuleFromFaculty } from "@/app/actions/admin"
+import { reviewGrade, publishGrade } from "@/app/actions/assessments"
 import type { Role } from "@prisma/client"
+
+type GradeQueueItem = {
+  gradeId: string; status: string; mark: number | null; feedback: string | null
+  markerId: string | null; markerName: string; reviewerName: string | null
+  studentName: string; studentIdNumber: string | null
+  assessmentTitle: string; maxMark: number
+  moduleId: string; moduleCode: string; draftedAt: string | null
+}
 
 type User   = { id: string; name: string; email: string; role: Role; studentIdNumber: string | null; isActive: boolean; createdAt: string; group: { id: string; name: string } | null }
 type Group  = { id: string; name: string; tutor: { id: string; name: string }; members: { id: string; name: string; email: string }[] }
@@ -23,14 +32,16 @@ const ROLE_COLOR: Record<Role, { bg: string; color: string }> = {
 const EMPTY_USER  = { name: "", email: "", password: "", role: "STUDENT" as Role, studentIdNumber: "" }
 const EMPTY_GROUP = { name: "", tutorId: "" }
 
-export default function AdminView({ users, groups, modules, tutors, facultyAssignments, stats }: {
+export default function AdminView({ users, groups, modules, tutors, facultyAssignments, stats, gradeQueue }: {
   users: User[]; groups: Group[]; modules: Module[]; tutors: Tutor[]
   facultyAssignments: Record<string, string[]>
   stats: { students: number; faculty: number; tutors: number; admins: number }
+  gradeQueue: GradeQueueItem[]
 }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
-  const [tab, setTab]         = useState<"overview" | "users" | "groups">("overview")
+  const [tab, setTab]         = useState<"overview" | "users" | "groups" | "grading">("overview")
+  const [reviewNoteFor, setReviewNoteFor] = useState<{ gradeId: string; note: string } | null>(null)
   const [roleFilter, setRoleFilter] = useState<"All" | Role>("All")
   const [showNewUser, setShowNewUser]   = useState(false)
   const [showNewGroup, setShowNewGroup] = useState(false)
@@ -104,6 +115,25 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
     refresh()
   }
 
+  async function handlePublishGrade(g: GradeQueueItem) {
+    if (!window.confirm(`Publish ${g.mark}/${g.maxMark} to ${g.studentName}? The student will see the mark and feedback immediately.`)) return
+    setSaving(true)
+    const res = await publishGrade(g.gradeId)
+    setSaving(false)
+    if ("error" in res) { flash("⚠ " + res.error); return }
+    flash(`✓ Grade published to ${g.studentName}`); refresh()
+  }
+
+  async function handleAdminReview(g: GradeQueueItem, decision: "approve" | "return") {
+    const note = reviewNoteFor?.gradeId === g.gradeId ? reviewNoteFor.note : ""
+    setSaving(true)
+    const res = await reviewGrade(g.gradeId, g.moduleId, decision, note)
+    setSaving(false)
+    if ("error" in res) { flash("⚠ " + res.error); return }
+    setReviewNoteFor(null)
+    flash(decision === "approve" ? "✓ Grade approved — ready to publish" : "✓ Returned to the marker"); refresh()
+  }
+
   const filtered = roleFilter === "All" ? users : users.filter(u => u.role === roleFilter)
   const students = users.filter(u => u.role === "STUDENT")
 
@@ -116,10 +146,10 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
       )}
 
       <div style={{ background: "#fff", borderBottom: "1px solid #E2D9CC", display: "flex", paddingLeft: 28, flexShrink: 0 }}>
-        {(["overview", "users", "groups"] as const).map(t => (
+        {(["overview", "users", "groups", "grading"] as const).map(t => (
           <button key={t} onClick={() => { setTab(t); setModuleManageId(null) }}
-            style={{ padding: "14px 22px", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: tab === t ? 600 : 400, color: tab === t ? "#0C3D26" : "#6B7280", background: "none", borderBottom: tab === t ? "2px solid #0C3D26" : "2px solid transparent", textTransform: "capitalize" }}>
-            {t === "overview" ? "📊 Overview" : t === "users" ? `👥 Users (${users.length})` : `🏫 Groups (${groups.length})`}
+            style={{ padding: "14px 22px", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: tab === t ? 600 : 400, color: tab === t ? (t === "grading" && gradeQueue.length > 0 ? "#B47E2A" : "#0C3D26") : "#6B7280", background: "none", borderBottom: tab === t ? `2px solid ${t === "grading" && gradeQueue.length > 0 ? "#B47E2A" : "#0C3D26"}` : "2px solid transparent", textTransform: "capitalize" }}>
+            {t === "overview" ? "📊 Overview" : t === "users" ? `👥 Users (${users.length})` : t === "groups" ? `🏫 Groups (${groups.length})` : `⚖️ Grading${gradeQueue.length > 0 ? ` (${gradeQueue.length})` : ""}`}
           </button>
         ))}
       </div>
@@ -454,6 +484,83 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* GRADING */}
+        {tab === "grading" && (
+          <div style={{ maxWidth: 860 }}>
+            <h1 style={{ fontFamily: "serif", fontSize: 22, color: "#0C3D26", margin: "0 0 4px", fontWeight: 600 }}>Assessment Grading</h1>
+            <p style={{ color: "#6B7280", fontSize: 13, margin: "0 0 20px" }}>
+              Grades flow: faculty marks → a second person reviews → you publish to the student. Nothing is visible to students until you publish it.
+            </p>
+
+            {gradeQueue.length === 0 && (
+              <div style={{ background: "#fff", borderRadius: 12, padding: "36px", border: "1px dashed #E2D9CC", textAlign: "center", color: "#9CA3AF" }}>
+                <div style={{ fontSize: 32, marginBottom: 10 }}>⚖️</div>
+                <p style={{ fontSize: 14 }}>Nothing waiting. Grades appear here once faculty mark student submissions.</p>
+              </div>
+            )}
+
+            {(["APPROVED", "IN_REVIEW"] as const).map(section => {
+              const items = gradeQueue.filter(g => g.status === section)
+              if (items.length === 0) return null
+              return (
+                <div key={section} style={{ marginBottom: 26 }}>
+                  <h2 style={{ fontFamily: "serif", fontSize: 17, color: "#1A1A1A", margin: "0 0 12px", fontWeight: 600 }}>
+                    {section === "APPROVED" ? `✅ Ready to publish (${items.length})` : `👀 Awaiting review (${items.length})`}
+                  </h2>
+                  {items.map(g => (
+                    <div key={g.gradeId} style={{ background: "#fff", borderRadius: 12, border: "1px solid #E2D9CC", marginBottom: 12, padding: "16px 20px" }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ marginBottom: 4 }}>
+                            <span style={{ fontWeight: 600, fontSize: 14, color: "#1A1A1A" }}>{g.studentName}</span>
+                            {g.studentIdNumber && <span style={{ fontSize: 11, color: "#B47E2A", fontWeight: 600, marginLeft: 8 }}>ID: {g.studentIdNumber}</span>}
+                            <span style={{ fontSize: 12, color: "#6B7280", marginLeft: 8 }}>{g.moduleCode} · {g.assessmentTitle}</span>
+                          </div>
+                          <div style={{ fontSize: 12, color: "#6B7280", marginBottom: g.feedback ? 8 : 0 }}>
+                            Marked <strong style={{ color: "#1A3A6B" }}>{g.mark}/{g.maxMark}</strong> by {g.markerName}
+                            {g.reviewerName && <> · Reviewed by {g.reviewerName}</>}
+                            {g.draftedAt && <> · {new Date(g.draftedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</>}
+                          </div>
+                          {g.feedback && (
+                            <div style={{ fontSize: 12.5, color: "#374151", background: "#F7F3ED", borderRadius: 8, padding: "8px 12px", lineHeight: 1.6 }}>{g.feedback}</div>
+                          )}
+                        </div>
+                        <div style={{ flexShrink: 0 }}>
+                          {g.status === "APPROVED" ? (
+                            <button onClick={() => handlePublishGrade(g)} disabled={saving}
+                              style={{ background: "#0C3D26", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                              Publish to Student
+                            </button>
+                          ) : (
+                            <button onClick={() => setReviewNoteFor(reviewNoteFor?.gradeId === g.gradeId ? null : { gradeId: g.gradeId, note: "" })}
+                              style={{ background: reviewNoteFor?.gradeId === g.gradeId ? "#FBF4E3" : "#EEF2F8", color: reviewNoteFor?.gradeId === g.gradeId ? "#92400E" : "#1A3A6B", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                              {reviewNoteFor?.gradeId === g.gradeId ? "Cancel" : "Review →"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {g.status === "IN_REVIEW" && reviewNoteFor?.gradeId === g.gradeId && (
+                        <div style={{ marginTop: 12, borderTop: "1px solid #F0EAE0", paddingTop: 12 }}>
+                          <textarea value={reviewNoteFor.note} onChange={e => setReviewNoteFor({ gradeId: g.gradeId, note: e.target.value })}
+                            rows={2} placeholder="Optional note if approving — required if returning to the marker."
+                            style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 13, resize: "vertical", outline: "none", fontFamily: "inherit", marginBottom: 10 }} />
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button onClick={() => handleAdminReview(g, "approve")} disabled={saving}
+                              style={{ background: "#0C3D26", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✓ Approve</button>
+                            <button onClick={() => handleAdminReview(g, "return")} disabled={saving}
+                              style={{ background: "#FEE2E2", color: "#B91C1C", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>↩ Return to Marker</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
