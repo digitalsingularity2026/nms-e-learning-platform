@@ -21,7 +21,10 @@ export default async function FacultyModulePage({ params }: { params: Promise<{ 
     include: {
       lessons: {
         orderBy: { orderIndex: "asc" },
-        include: { videos: { orderBy: { orderIndex: "asc" } } },
+        include: {
+          videos: { orderBy: { orderIndex: "asc" } },
+          files:  { orderBy: { orderIndex: "asc" } },
+        },
       },
       quiz: {
         include: {
@@ -38,7 +41,7 @@ export default async function FacultyModulePage({ params }: { params: Promise<{ 
   const pendingAttempts = module.quiz ? await prisma.quizAttempt.findMany({
     where: { quizId: module.quiz.id, status: "PENDING_REVIEW" },
     include: {
-      student: { select: { id: true, name: true, email: true } },
+      student: { select: { id: true, name: true, email: true, studentIdNumber: true } },
       answers: {
         include: { question: { select: { id: true, type: true, text: true, points: true } } },
       },
@@ -50,7 +53,7 @@ export default async function FacultyModulePage({ params }: { params: Promise<{ 
     id: a.id,
     score: a.score,
     submittedAt: a.submittedAt?.toISOString() ?? null,
-    student: { id: a.student.id, name: a.student.name ?? "", email: a.student.email },
+    student: { id: a.student.id, name: a.student.name ?? "", email: a.student.email, studentIdNumber: a.student.studentIdNumber },
     shortAnswers: a.answers
       .filter(ans => ans.question.type === "SHORT_ANSWER")
       .map(ans => ({
@@ -82,6 +85,7 @@ export default async function FacultyModulePage({ params }: { params: Promise<{ 
         lessons={module.lessons.map(l => ({
           id: l.id, title: l.title, content: l.content, isPublished: l.isPublished,
           videos: l.videos.map(v => ({ id: v.id, title: v.title, url: v.url, type: v.type })),
+          files:  l.files.map(f => ({ id: f.id, title: f.title, url: f.url, mimeType: f.mimeType, fileSizeBytes: f.fileSizeBytes })),
         }))}
         quiz={module.quiz ? {
           id: module.quiz.id,

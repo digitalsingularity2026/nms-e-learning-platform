@@ -70,6 +70,7 @@ export default async function AdminPage() {
       <AdminView
         users={users.map(u => ({
           id: u.id, name: u.name ?? "", email: u.email, role: u.role,
+          studentIdNumber: u.studentIdNumber,
           isActive: u.isActive, createdAt: u.createdAt.toISOString(),
           group: u.groupMembership ? { id: u.groupMembership.groupId, name: u.groupMembership.group.name } : null,
         }))}

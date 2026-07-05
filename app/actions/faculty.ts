@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
+import { r2, R2_BUCKET } from "@/lib/r2"
+import { DeleteObjectCommand } from "@aws-sdk/client-s3"
 
 async function checkFacultyAccess(moduleId: string) {
   const session = await auth()
@@ -11,6 +13,21 @@ async function checkFacultyAccess(moduleId: string) {
     where: { moduleId_facultyId: { moduleId, facultyId: session.user.id } },
   })
   return assignment ? session.user.id : null
+}
+
+async function lessonBelongsToModule(lessonId: string, moduleId: string) {
+  const lesson = await prisma.lesson.findUnique({ where: { id: lessonId }, select: { moduleId: true } })
+  return lesson?.moduleId === moduleId
+}
+
+// Best-effort cleanup — a failed R2 delete should never block the DB operation
+async function deleteFromR2(r2Key: string | null | undefined) {
+  if (!r2Key) return
+  try {
+    await r2.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: r2Key }))
+  } catch (err) {
+    console.error("R2 delete failed for key:", r2Key, err)
+  }
 }
 
 export async function createLesson(moduleId: string, data: { title: string; content: string; isPublished: boolean }) {
@@ -23,6 +40,7 @@ export async function createLesson(moduleId: string, data: { title: string; cont
 
 export async function updateLesson(lessonId: string, moduleId: string, data: { title: string; content: string; isPublished: boolean }) {
   if (!await checkFacultyAccess(moduleId)) return { error: "Unauthorized" }
+  if (!await lessonBelongsToModule(lessonId, moduleId)) return { error: "Lesson not found in this module" }
   await prisma.lesson.update({ where: { id: lessonId }, data })
   revalidatePath(`/dashboard/faculty/module/${moduleId}`)
   revalidatePath(`/dashboard/student/module/${moduleId}`)
@@ -31,13 +49,21 @@ export async function updateLesson(lessonId: string, moduleId: string, data: { t
 
 export async function deleteLesson(lessonId: string, moduleId: string) {
   if (!await checkFacultyAccess(moduleId)) return { error: "Unauthorized" }
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    select: { moduleId: true, videos: { select: { r2Key: true } }, files: { select: { r2Key: true } } },
+  })
+  if (!lesson || lesson.moduleId !== moduleId) return { error: "Lesson not found in this module" }
   await prisma.lesson.delete({ where: { id: lessonId } })
+  for (const v of lesson.videos) await deleteFromR2(v.r2Key)
+  for (const f of lesson.files) await deleteFromR2(f.r2Key)
   revalidatePath(`/dashboard/faculty/module/${moduleId}`)
   return { success: true }
 }
 
 export async function addYouTubeVideo(lessonId: string, moduleId: string, title: string, url: string) {
   if (!await checkFacultyAccess(moduleId)) return { error: "Unauthorized" }
+  if (!await lessonBelongsToModule(lessonId, moduleId)) return { error: "Lesson not found in this module" }
   const count = await prisma.videoResource.count({ where: { lessonId } })
   await prisma.videoResource.create({ data: { lessonId, title, url, type: "YOUTUBE", orderIndex: count } })
   revalidatePath(`/dashboard/faculty/module/${moduleId}`)
@@ -46,8 +72,50 @@ export async function addYouTubeVideo(lessonId: string, moduleId: string, title:
 
 export async function removeVideo(videoId: string, moduleId: string) {
   if (!await checkFacultyAccess(moduleId)) return { error: "Unauthorized" }
+  const video = await prisma.videoResource.findUnique({
+    where: { id: videoId },
+    select: { r2Key: true, lesson: { select: { moduleId: true } } },
+  })
+  if (!video || video.lesson.moduleId !== moduleId) return { error: "Video not found in this module" }
   await prisma.videoResource.delete({ where: { id: videoId } })
+  await deleteFromR2(video.r2Key)
   revalidatePath(`/dashboard/faculty/module/${moduleId}`)
+  return { success: true }
+}
+
+export async function addLessonFile(lessonId: string, moduleId: string, data: {
+  title: string; url: string; r2Key: string; fileSizeBytes?: number; mimeType?: string
+}) {
+  if (!await checkFacultyAccess(moduleId)) return { error: "Unauthorized" }
+  if (!await lessonBelongsToModule(lessonId, moduleId)) return { error: "Lesson not found in this module" }
+  const count = await prisma.fileResource.count({ where: { lessonId } })
+  await prisma.fileResource.create({
+    data: {
+      lessonId,
+      title: data.title,
+      url: data.url,
+      r2Key: data.r2Key,
+      fileSizeBytes: data.fileSizeBytes ?? null,
+      mimeType: data.mimeType ?? null,
+      orderIndex: count,
+    },
+  })
+  revalidatePath(`/dashboard/faculty/module/${moduleId}`)
+  revalidatePath(`/dashboard/student/module/${moduleId}`)
+  return { success: true }
+}
+
+export async function removeLessonFile(fileId: string, moduleId: string) {
+  if (!await checkFacultyAccess(moduleId)) return { error: "Unauthorized" }
+  const file = await prisma.fileResource.findUnique({
+    where: { id: fileId },
+    select: { r2Key: true, lesson: { select: { moduleId: true } } },
+  })
+  if (!file || file.lesson.moduleId !== moduleId) return { error: "File not found in this module" }
+  await prisma.fileResource.delete({ where: { id: fileId } })
+  await deleteFromR2(file.r2Key)
+  revalidatePath(`/dashboard/faculty/module/${moduleId}`)
+  revalidatePath(`/dashboard/student/module/${moduleId}`)
   return { success: true }
 }
 
@@ -178,6 +246,7 @@ export async function gradeShortAnswers(
 
 export async function addSelfHostedVideo(lessonId: string, moduleId: string, title: string, url: string, r2Key: string) {
   if (!await checkFacultyAccess(moduleId)) return { error: "Unauthorized" }
+  if (!await lessonBelongsToModule(lessonId, moduleId)) return { error: "Lesson not found in this module" }
   const count = await prisma.videoResource.count({ where: { lessonId } })
   await prisma.videoResource.create({
     data: { lessonId, title, url, type: "SELF_HOSTED", r2Key, orderIndex: count },

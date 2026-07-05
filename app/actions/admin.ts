@@ -12,12 +12,29 @@ async function checkAdmin() {
   return session
 }
 
-export async function createUser(data: { name: string; email: string; password: string; role: Role }) {
+export async function createUser(data: { name: string; email: string; password: string; role: Role; studentIdNumber?: string }) {
   if (!await checkAdmin()) return { error: "Unauthorized" }
   const existing = await prisma.user.findUnique({ where: { email: data.email } })
   if (existing) return { error: "A user with this email already exists." }
+  const studentIdNumber = data.role === "STUDENT" ? (data.studentIdNumber?.trim() || null) : null
+  if (studentIdNumber) {
+    const idTaken = await prisma.user.findUnique({ where: { studentIdNumber } })
+    if (idTaken) return { error: `Student ID ${studentIdNumber} is already assigned to another user.` }
+  }
   const passwordHash = await bcrypt.hash(data.password, 12)
-  await prisma.user.create({ data: { name: data.name, email: data.email, passwordHash, role: data.role } })
+  await prisma.user.create({ data: { name: data.name, email: data.email, passwordHash, role: data.role, studentIdNumber } })
+  revalidatePath("/dashboard/admin")
+  return { success: true }
+}
+
+export async function updateStudentIdNumber(userId: string, studentIdNumber: string) {
+  if (!await checkAdmin()) return { error: "Unauthorized" }
+  const value = studentIdNumber.trim() || null
+  if (value) {
+    const idTaken = await prisma.user.findUnique({ where: { studentIdNumber: value } })
+    if (idTaken && idTaken.id !== userId) return { error: `Student ID ${value} is already assigned to another user.` }
+  }
+  await prisma.user.update({ where: { id: userId }, data: { studentIdNumber: value } })
   revalidatePath("/dashboard/admin")
   return { success: true }
 }

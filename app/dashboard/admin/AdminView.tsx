@@ -2,10 +2,10 @@
 
 import { useState, useTransition, Fragment } from "react"
 import { useRouter } from "next/navigation"
-import { createUser, updateUserRole, toggleUserActive, resetUserPassword, createGroup, deleteGroup, assignStudentToGroup, removeStudentFromGroup, assignModuleToFaculty, removeModuleFromFaculty } from "@/app/actions/admin"
+import { createUser, updateUserRole, toggleUserActive, resetUserPassword, updateStudentIdNumber, createGroup, deleteGroup, assignStudentToGroup, removeStudentFromGroup, assignModuleToFaculty, removeModuleFromFaculty } from "@/app/actions/admin"
 import type { Role } from "@prisma/client"
 
-type User   = { id: string; name: string; email: string; role: Role; isActive: boolean; createdAt: string; group: { id: string; name: string } | null }
+type User   = { id: string; name: string; email: string; role: Role; studentIdNumber: string | null; isActive: boolean; createdAt: string; group: { id: string; name: string } | null }
 type Group  = { id: string; name: string; tutor: { id: string; name: string }; members: { id: string; name: string; email: string }[] }
 type Module = { id: string; code: string; title: string; lessons: number; questions: number; isPublished: boolean }
 type Tutor  = { id: string; name: string }
@@ -20,7 +20,7 @@ const ROLE_COLOR: Record<Role, { bg: string; color: string }> = {
   IT_ADMIN:     { bg: "#F3F4F6", color: "#374151" },
 }
 
-const EMPTY_USER  = { name: "", email: "", password: "", role: "STUDENT" as Role }
+const EMPTY_USER  = { name: "", email: "", password: "", role: "STUDENT" as Role, studentIdNumber: "" }
 const EMPTY_GROUP = { name: "", tutorId: "" }
 
 export default function AdminView({ users, groups, modules, tutors, facultyAssignments, stats }: {
@@ -39,6 +39,7 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
   const [saving, setSaving]   = useState(false)
   const [msg, setMsg]         = useState("")
   const [editingPw, setEditingPw] = useState<{ userId: string; pw: string } | null>(null)
+  const [editingSid, setEditingSid] = useState<{ userId: string; name: string; sid: string } | null>(null)
   const [moduleManageId, setModuleManageId] = useState<string | null>(null)
 
   const refresh = () => startTransition(() => router.refresh())
@@ -68,6 +69,15 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
     setSaving(true)
     await resetUserPassword(editingPw.userId, editingPw.pw)
     setSaving(false); setEditingPw(null); flash("✓ Password updated")
+  }
+
+  async function handleSetSid() {
+    if (!editingSid) return
+    setSaving(true)
+    const res = await updateStudentIdNumber(editingSid.userId, editingSid.sid)
+    setSaving(false)
+    if ("error" in res) { flash("⚠ " + res.error); return }
+    setEditingSid(null); flash("✓ Student ID updated"); refresh()
   }
 
   async function handleModuleToggle(facultyId: string, moduleId: string, currentlyAssigned: boolean) {
@@ -194,6 +204,12 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
                     <label style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", display: "block", marginBottom: 5, letterSpacing: "0.08em" }}>INITIAL PASSWORD</label>
                     <input value={userForm.password} onChange={e => setUserForm(p => ({ ...p, password: e.target.value }))} placeholder="Share this with the user" type="text" style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 14, outline: "none" }} />
                   </div>
+                  {userForm.role === "STUDENT" && (
+                    <div>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", display: "block", marginBottom: 5, letterSpacing: "0.08em" }}>STUDENT ID / ROLL NUMBER (OPTIONAL)</label>
+                      <input value={userForm.studentIdNumber} onChange={e => setUserForm(p => ({ ...p, studentIdNumber: e.target.value }))} placeholder="e.g. NMS-2026-001 — matches paper register" style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 14, outline: "none" }} />
+                    </div>
+                  )}
                 </div>
                 {userForm.role === "FACULTY" && (
                   <p style={{ fontSize: 12, color: "#B47E2A", margin: "0 0 12px", background: "#FBF4E3", padding: "8px 12px", borderRadius: 8 }}>
@@ -229,7 +245,12 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
                   {filtered.map((u, i) => (
                     <Fragment key={u.id}>
                       <tr style={{ background: i % 2 === 0 ? "#fff" : "#FAFAF8", borderBottom: moduleManageId === u.id ? "none" : "1px solid #F0EAE0", opacity: u.isActive ? 1 : 0.55 }}>
-                        <td style={{ padding: "10px 16px", fontWeight: 500, color: "#1A1A1A" }}>{u.name || "—"}</td>
+                        <td style={{ padding: "10px 16px", fontWeight: 500, color: "#1A1A1A" }}>
+                          {u.name || "—"}
+                          {u.role === "STUDENT" && u.studentIdNumber && (
+                            <div style={{ fontSize: 10.5, color: "#B47E2A", fontWeight: 600, marginTop: 2 }}>ID: {u.studentIdNumber}</div>
+                          )}
+                        </td>
                         <td style={{ padding: "10px 16px", color: "#6B7280", fontSize: 12 }}>{u.email}</td>
                         <td style={{ padding: "10px 16px" }}>
                           <select value={u.role} onChange={e => handleRoleChange(u.id, e.target.value as Role)}
@@ -259,6 +280,12 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
                               <button onClick={() => setModuleManageId(moduleManageId === u.id ? null : u.id)}
                                 style={{ fontSize: 11, padding: "3px 10px", borderRadius: 6, border: `1px solid ${moduleManageId === u.id ? "#0C3D26" : "#E2D9CC"}`, background: moduleManageId === u.id ? "#E3F0E9" : "#fff", cursor: "pointer", color: "#1A3A6B", fontWeight: 500 }}>
                                 📚 Modules
+                              </button>
+                            )}
+                            {u.role === "STUDENT" && (
+                              <button onClick={() => setEditingSid({ userId: u.id, name: u.name, sid: u.studentIdNumber ?? "" })}
+                                style={{ fontSize: 11, padding: "3px 10px", borderRadius: 6, border: "1px solid #E2D9CC", background: "#fff", cursor: "pointer", color: "#B47E2A", fontWeight: 500 }}>
+                                🆔 Set ID
                               </button>
                             )}
                             <button onClick={() => setEditingPw({ userId: u.id, pw: "" })}
@@ -305,6 +332,25 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
                 </tbody>
               </table>
             </div>
+
+            {editingSid && (
+              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 40 }}>
+                <div style={{ background: "#fff", borderRadius: 14, padding: "28px 32px", width: 380, boxShadow: "0 24px 60px rgba(0,0,0,0.3)" }}>
+                  <h3 style={{ fontFamily: "serif", fontSize: 18, color: "#0C3D26", margin: "0 0 6px", fontWeight: 600 }}>Student ID / Roll Number</h3>
+                  <p style={{ fontSize: 12, color: "#6B7280", margin: "0 0 16px" }}>{editingSid.name} — should match the school&apos;s paper registration number. Leave blank to remove.</p>
+                  <input value={editingSid.sid} onChange={e => setEditingSid(p => p ? { ...p, sid: e.target.value } : null)}
+                    placeholder="e.g. NMS-2026-001" type="text"
+                    style={{ width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 14, outline: "none", marginBottom: 14 }} />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => setEditingSid(null)} style={{ flex: 1, padding: "9px", background: "#F3F4F6", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13 }}>Cancel</button>
+                    <button onClick={handleSetSid} disabled={saving}
+                      style={{ flex: 1, padding: "9px", background: saving ? "#E5E7EB" : "#0C3D26", color: saving ? "#9CA3AF" : "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
+                      {saving ? "Saving…" : "Save"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {editingPw && (
               <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 40 }}>

@@ -2,9 +2,11 @@
 
 import { useState } from "react"
 import QuizPanel from "./QuizPanel"
+import { fileIcon, fileKindLabel, formatFileSize, isAudioFile } from "@/lib/files"
 
 type Video  = { id: string; title: string; type: string; url: string }
-type Lesson = { id: string; title: string; content: string; videos: Video[] }
+type Attachment = { id: string; title: string; url: string; mimeType: string | null; fileSizeBytes: number | null }
+type Lesson = { id: string; title: string; content: string; videos: Video[]; files: Attachment[] }
 type Option = { id: string; text: string; matchText?: string | null }
 type Question = { id: string; text: string; type: string; hintText?: string | null; points: number; explanation?: string | null; options: Option[] }
 type Quiz  = { id: string; title: string; instructions: string | null; questions: Question[] }
@@ -58,7 +60,7 @@ export default function ModuleView({ module, lessons, quiz, hasPassedQuiz }: Pro
               <button key={l.id} onClick={() => { setActiveLessonId(l.id); setShowQuiz(false); setVideoOpen(false) }}
                 style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 18px", border: "none", cursor: "pointer", fontFamily: "inherit", background: active ? "#E8F3EC" : "none", borderLeft: active ? "3px solid #0C3D26" : "3px solid transparent" }}>
                 <div style={{ fontSize: 12.5, fontWeight: active ? 600 : 400, color: active ? "#0C3D26" : "#374151", lineHeight: 1.4 }}>{l.title}</div>
-                <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>Reading{l.videos.length > 0 ? " + Video" : ""}</div>
+                <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>Reading{l.videos.length > 0 ? " + Video" : ""}{l.files.length > 0 ? " + Materials" : ""}</div>
               </button>
             )
           })}
@@ -107,6 +109,8 @@ function LessonView({ lesson, videoOpen, setVideoOpen }: { lesson: any; videoOpe
       <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
         <span style={{ fontSize: 10, background: "#E3F0E9", color: "#0C3D26", padding: "3px 10px", borderRadius: 100, fontWeight: 700, letterSpacing: "0.05em" }}>READING</span>
         {video && <span style={{ fontSize: 10, background: "#FBF4E3", color: "#B47E2A", padding: "3px 10px", borderRadius: 100, fontWeight: 700, letterSpacing: "0.05em" }}>VIDEO</span>}
+        {lesson.files.some((f: any) => isAudioFile(f.mimeType, f.url)) && <span style={{ fontSize: 10, background: "#EEF2F8", color: "#1A3A6B", padding: "3px 10px", borderRadius: 100, fontWeight: 700, letterSpacing: "0.05em" }}>AUDIO</span>}
+        {lesson.files.some((f: any) => !isAudioFile(f.mimeType, f.url)) && <span style={{ fontSize: 10, background: "#F0F0FF", color: "#2D1A6B", padding: "3px 10px", borderRadius: 100, fontWeight: 700, letterSpacing: "0.05em" }}>MATERIALS</span>}
       </div>
 
       {video && (
@@ -129,6 +133,34 @@ function LessonView({ lesson, videoOpen, setVideoOpen }: { lesson: any; videoOpe
       )}
 
       <div className="lesson-prose" style={{ background: "#fff", borderRadius: 12, padding: "28px 32px", border: "1px solid #E2D9CC", lineHeight: 1.75, fontSize: 15, color: "#2D2D2D" }} dangerouslySetInnerHTML={{ __html: lesson.content }} />
+
+      {lesson.files.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#B0A090", letterSpacing: "0.12em", marginBottom: 10 }}>LESSON MATERIALS</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {lesson.files.map((f: Attachment) => isAudioFile(f.mimeType, f.url) ? (
+              <div key={f.id} style={{ background: "#fff", border: "1px solid #E2D9CC", borderRadius: 10, padding: "14px 18px" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#0C3D26", marginBottom: 10 }}>🎧 {f.title}</div>
+                <audio controls preload="none" src={f.url} style={{ width: "100%" }} />
+                <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 8 }}>
+                  Audio{f.fileSizeBytes ? ` · ${formatFileSize(f.fileSizeBytes)}` : ""} · Requires internet to play
+                </div>
+              </div>
+            ) : (
+              <a key={f.id} href={f.url} target="_blank" rel="noreferrer"
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", border: "1px solid #E2D9CC", borderRadius: 10, padding: "14px 18px", textDecoration: "none" }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#0C3D26" }}>{fileIcon(f.mimeType, f.url)} {f.title}</div>
+                  <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 3 }}>
+                    {fileKindLabel(f.mimeType, f.url)}{f.fileSizeBytes ? ` · ${formatFileSize(f.fileSizeBytes)}` : ""} · Opens in a new tab
+                  </div>
+                </div>
+                <span style={{ color: "#0C3D26", fontSize: 12, fontWeight: 600, flexShrink: 0 }}>⬇ Download</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

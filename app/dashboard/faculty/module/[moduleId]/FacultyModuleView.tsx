@@ -5,15 +5,17 @@ import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import { createLesson, updateLesson, deleteLesson, ensureQuiz, createQuestion, deleteQuestion, gradeShortAnswers } from "@/app/actions/faculty"
 import VideoUploader from "@/components/VideoUploader"
+import AttachmentUploader from "@/components/AttachmentUploader"
 
 const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), { ssr: false, loading: () => <div style={{ height: 200, background: "#F9F9F9", borderRadius: 10, border: "1.5px solid #E2D9CC", display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", fontSize: 13 }}>Loading editor…</div> })
 
 type Video    = { id: string; title: string; url: string; type: string }
-type Lesson   = { id: string; title: string; content: string; isPublished: boolean; videos: Video[] }
+type Attachment = { id: string; title: string; url: string; mimeType: string | null; fileSizeBytes: number | null }
+type Lesson   = { id: string; title: string; content: string; isPublished: boolean; videos: Video[]; files: Attachment[] }
 type Option   = { id: string; text: string; isCorrect: boolean; matchText?: string | null }
 type Question = { id: string; text: string; type: string; hintText?: string | null; points: number; options: Option[] }
 type Quiz     = { id: string; instructions: string; questions: Question[] }
-type PendingAttempt = { id: string; score: number | null; submittedAt: string | null; student: { id: string; name: string; email: string }; shortAnswers: Array<{ questionId: string; questionText: string; points: number; textAnswer: string | null }> }
+type PendingAttempt = { id: string; score: number | null; submittedAt: string | null; student: { id: string; name: string; email: string; studentIdNumber: string | null }; shortAnswers: Array<{ questionId: string; questionText: string; points: number; textAnswer: string | null }> }
 
 const EMPTY_LESSON = { title: "", content: "", isPublished: false }
 const ALL_TYPES = [
@@ -133,6 +135,7 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
                     <div style={{ display: "flex", gap: 6 }}>
                       <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 100, background: l.isPublished ? "#E3F0E9" : "#F3F4F6", color: l.isPublished ? "#0C3D26" : "#9CA3AF" }}>{l.isPublished ? "PUBLISHED" : "DRAFT"}</span>
                       {l.videos.length > 0 && <span style={{ fontSize: 10, color: "#B47E2A" }}>▶ {l.videos.length}v</span>}
+                      {l.files.length > 0 && <span style={{ fontSize: 10, color: "#1A3A6B" }}>📎 {l.files.length}</span>}
                     </div>
                   </div>
                 ))}
@@ -167,6 +170,13 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
                     lessonId={editingId !== "new" ? editingId : null}
                     moduleId={module.id}
                     existingVideos={editingLesson?.videos ?? []}
+                    onUpdate={refresh}
+                  />
+
+                  <AttachmentUploader
+                    lessonId={editingId !== "new" ? editingId : null}
+                    moduleId={module.id}
+                    existingFiles={editingLesson?.files ?? []}
                     onUpdate={refresh}
                   />
 
@@ -389,6 +399,7 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
                     <div style={{ padding: "14px 20px", background: "#F7F3ED", borderBottom: "1px solid #E2D9CC", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <div>
                         <span style={{ fontWeight: 600, fontSize: 15, color: "#1A1A1A" }}>{attempt.student.name}</span>
+                        {attempt.student.studentIdNumber && <span style={{ fontSize: 11, color: "#B47E2A", fontWeight: 600, marginLeft: 8 }}>ID: {attempt.student.studentIdNumber}</span>}
                         <span style={{ fontSize: 12, color: "#9CA3AF", marginLeft: 8 }}>{attempt.student.email}</span>
                       </div>
                       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>

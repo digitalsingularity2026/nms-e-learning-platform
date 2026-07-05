@@ -19,7 +19,10 @@ export default async function ModulePage({ params }: { params: Promise<{ moduleI
         lessons: {
           where: { isPublished: true },
           orderBy: { orderIndex: "asc" },
-          include: { videos: { orderBy: { orderIndex: "asc" } } },
+          include: {
+            videos: { orderBy: { orderIndex: "asc" } },
+            files:  { orderBy: { orderIndex: "asc" } },
+          },
         },
         quiz: {
           include: {
@@ -67,6 +70,7 @@ export default async function ModulePage({ params }: { params: Promise<{ moduleI
         lessons={module.lessons.map(l => ({
           id: l.id, title: l.title, content: l.content,
           videos: l.videos.map(v => ({ id: v.id, title: v.title, type: v.type, url: v.url })),
+          files:  l.files.map(f => ({ id: f.id, title: f.title, url: f.url, mimeType: f.mimeType, fileSizeBytes: f.fileSizeBytes })),
         }))}
         quiz={module.quiz ? {
           id: module.quiz.id,

@@ -177,7 +177,7 @@ export default async function TutorDashboard() {
                         <tr key={s.id} style={{ background: i % 2 === 0 ? "#fff" : "#FAFAF8", borderBottom: "1px solid #F0EAE0" }}>
                           <td style={{ padding: "12px 16px" }}>
                             <div style={{ fontWeight: 500, color: "#1A1A1A" }}>{s.name}</div>
-                            <div style={{ fontSize: 11, color: "#9CA3AF" }}>{s.email}</div>
+                            <div style={{ fontSize: 11, color: "#9CA3AF" }}>{s.studentIdNumber ? `${s.studentIdNumber} · ` : ""}{s.email}</div>
                           </td>
                           <td style={{ padding: "12px 16px" }}>
                             <div style={{ width: 100, height: 5, background: "#EDE8E0", borderRadius: 3, overflow: "hidden", marginBottom: 4 }}>

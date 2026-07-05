@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { PutObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import { r2, R2_BUCKET } from "@/lib/r2"
+import { prisma } from "@/lib/prisma"
 
 export async function POST(req: Request) {
   const session = await auth()
@@ -12,6 +13,17 @@ export async function POST(req: Request) {
   const { filename, contentType, lessonId } = await req.json()
   if (!filename || !contentType || !lessonId) {
     return Response.json({ error: "Missing required fields" }, { status: 400 })
+  }
+
+  const lesson = await prisma.lesson.findUnique({ where: { id: lessonId }, select: { moduleId: true } })
+  if (!lesson) {
+    return Response.json({ error: "Lesson not found" }, { status: 404 })
+  }
+  const assignment = await prisma.moduleFacultyAssignment.findUnique({
+    where: { moduleId_facultyId: { moduleId: lesson.moduleId, facultyId: session.user.id } },
+  })
+  if (!assignment) {
+    return Response.json({ error: "You are not assigned to this module" }, { status: 403 })
   }
 
   const ext    = filename.split(".").pop()?.toLowerCase() ?? "bin"
