@@ -3,31 +3,8 @@ import { signOut } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
-
-type Status = "NOT_STARTED" | "ON_TRACK" | "STRUGGLING" | "COMPLETED"
-
-function getStatus(
-  progress: Array<{ isCompleted: boolean }>,
-  attempts: Array<{ passed: boolean | null; quizId: string }>
-): Status {
-  const total     = progress.length
-  const completed = progress.filter(p => p.isCompleted).length
-  if (total > 0 && completed === total) return "COMPLETED"
-  if (attempts.length === 0) return "NOT_STARTED"
-  const latestPassed = new Map<string, boolean | null>()
-  for (const a of attempts) {
-    if (!latestPassed.has(a.quizId)) latestPassed.set(a.quizId, a.passed)
-  }
-  if ([...latestPassed.values()].some(v => v === false)) return "STRUGGLING"
-  return "ON_TRACK"
-}
-
-const STATUS_STYLE: Record<Status, { bg: string; color: string; label: string }> = {
-  COMPLETED:   { bg: "#0C3D26", color: "#fff",    label: "✓ Completed" },
-  ON_TRACK:    { bg: "#E3F0E9", color: "#0C3D26", label: "On Track"    },
-  STRUGGLING:  { bg: "#FEF3C7", color: "#92400E", label: "Needs Help"  },
-  NOT_STARTED: { bg: "#F3F4F6", color: "#9CA3AF", label: "Not Started" },
-}
+import Link from "next/link"
+import { getStudentStatus, STUDENT_STATUS_STYLE } from "@/lib/studentStatus"
 
 export default async function TutorDashboard() {
   const session = await auth()
@@ -88,7 +65,7 @@ export default async function TutorDashboard() {
     const completed   = progress.filter(p => p.isCompleted).length
     const current     = progress.find(p => p.isUnlocked && !p.isCompleted)
     const lastAttempt = attempts[0]
-    const status      = getStatus(progress, attempts)
+    const status      = getStudentStatus(progress, attempts)
     const earnedCredits = progress.filter(p => p.isCompleted).reduce((s, p) => s + p.creditsAwarded, 0)
     return { ...m.student, progress, attempts, completed, current, lastAttempt, status, earnedCredits }
   }) ?? []
@@ -115,6 +92,7 @@ export default async function TutorDashboard() {
             style={{ width: 34, height: 34, background: "#5A2800" }}>
             {(tutorName ?? "T")[0]}
           </div>
+          <Link href="/profile" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", borderRadius: 20, padding: "4px 12px", fontSize: 11, textDecoration: "none" }}>Profile</Link>
           <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }) }}>
             <button type="submit" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", border: "none", borderRadius: 20, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>Sign out</button>
           </form>
@@ -149,7 +127,10 @@ export default async function TutorDashboard() {
               ))}
             </div>
 
-            <h2 style={{ fontFamily: "serif", fontSize: 18, color: "#1A1A1A", margin: "0 0 14px", fontWeight: 600 }}>Student Progress</h2>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <h2 style={{ fontFamily: "serif", fontSize: 18, color: "#1A1A1A", margin: 0, fontWeight: 600 }}>Student Progress</h2>
+              <Link href="/dashboard/tutor/students" style={{ fontSize: 12, color: "#1A3A6B", fontWeight: 600, textDecoration: "none", background: "#EEF2F8", padding: "6px 14px", borderRadius: 8 }}>👥 View All Students (school-wide)</Link>
+            </div>
 
             {students.length === 0 ? (
               <div style={{ background: "#fff", borderRadius: 12, padding: "28px", border: "1px dashed #E2D9CC", textAlign: "center", color: "#9CA3AF", marginBottom: 28 }}>
@@ -167,7 +148,7 @@ export default async function TutorDashboard() {
                   </thead>
                   <tbody>
                     {students.map((s, i) => {
-                      const st  = STATUS_STYLE[s.status]
+                      const st  = STUDENT_STATUS_STYLE[s.status]
                       const pct = s.progress.length > 0 ? Math.round((s.completed / s.progress.length) * 100) : 0
                       const lastDate  = s.lastAttempt?.submittedAt
                       const lastLabel = lastDate
@@ -176,8 +157,10 @@ export default async function TutorDashboard() {
                       return (
                         <tr key={s.id} style={{ background: i % 2 === 0 ? "#fff" : "#FAFAF8", borderBottom: "1px solid #F0EAE0" }}>
                           <td style={{ padding: "12px 16px" }}>
-                            <div style={{ fontWeight: 500, color: "#1A1A1A" }}>{s.name}</div>
-                            <div style={{ fontSize: 11, color: "#9CA3AF" }}>{s.studentIdNumber ? `${s.studentIdNumber} · ` : ""}{s.email}</div>
+                            <Link href={`/dashboard/tutor/student/${s.id}`} style={{ textDecoration: "none" }}>
+                              <div style={{ fontWeight: 500, color: "#0C3D26" }}>{s.name}</div>
+                              <div style={{ fontSize: 11, color: "#9CA3AF" }}>{s.studentIdNumber ? `${s.studentIdNumber} · ` : ""}{s.email}</div>
+                            </Link>
                           </td>
                           <td style={{ padding: "12px 16px" }}>
                             <div style={{ width: 100, height: 5, background: "#EDE8E0", borderRadius: 3, overflow: "hidden", marginBottom: 4 }}>

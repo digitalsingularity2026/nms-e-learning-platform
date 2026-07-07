@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { signOut } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
+import Link from "next/link"
 import AdminView from "./AdminView"
 
 export default async function AdminPage() {
@@ -75,6 +76,7 @@ export default async function AdminPage() {
           <div className="flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0" style={{ width: 34, height: 34, background: "#2D4A1A" }}>
             {(session.user.name ?? "A")[0]}
           </div>
+          <Link href="/profile" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", borderRadius: 20, padding: "4px 12px", fontSize: 11, textDecoration: "none" }}>Profile</Link>
           <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }) }}>
             <button type="submit" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", border: "none", borderRadius: 20, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>Sign out</button>
           </form>

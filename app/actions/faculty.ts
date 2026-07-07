@@ -145,6 +145,8 @@ export async function createQuestion(moduleId: string, quizId: string, data: {
     await prisma.quizQuestion.create({ data: { quizId, type: "PASSAGE", text: data.passageContent ?? "", orderIndex: order, points: 0 } })
   } else if (data.type === "MCQ") {
     await prisma.quizQuestion.create({ data: { quizId, type: "MCQ", text: data.text ?? "", explanation: data.explanation ?? null, orderIndex: order, points: 1, options: { create: (data.options ?? []).map((o, i) => ({ text: o.text, isCorrect: o.isCorrect, orderIndex: i + 1 })) } } })
+  } else if (data.type === "BEST_ANSWER") {
+    await prisma.quizQuestion.create({ data: { quizId, type: "BEST_ANSWER", text: data.text ?? "", explanation: data.explanation ?? null, orderIndex: order, points: 1, options: { create: (data.options ?? []).map((o, i) => ({ text: o.text, isCorrect: o.isCorrect, orderIndex: i + 1 })) } } })
   } else if (data.type === "MSQ") {
     await prisma.quizQuestion.create({ data: { quizId, type: "MSQ", text: data.text ?? "", explanation: data.explanation ?? null, orderIndex: order, points: 1, options: { create: (data.options ?? []).map((o, i) => ({ text: o.text, isCorrect: o.isCorrect, orderIndex: i + 1 })) } } })
   } else if (data.type === "TRUE_FALSE") {
@@ -168,6 +170,18 @@ export async function deleteQuestion(questionId: string, moduleId: string) {
   if (!await checkFacultyAccess(moduleId)) return { error: "Unauthorized" }
   await prisma.quizQuestion.delete({ where: { id: questionId } })
   revalidatePath(`/dashboard/faculty/module/${moduleId}`)
+  return { success: true }
+}
+
+export async function updateModuleSettings(moduleId: string, data: { passMark: number; learningObjectives: string[] }) {
+  if (!await checkFacultyAccess(moduleId)) return { error: "Unauthorized" }
+  if (!Number.isInteger(data.passMark) || data.passMark < 0 || data.passMark > 100) {
+    return { error: "Pass mark must be a whole number between 0 and 100." }
+  }
+  const objectives = data.learningObjectives.map(o => o.trim()).filter(Boolean)
+  await prisma.module.update({ where: { id: moduleId }, data: { passMark: data.passMark, learningObjectives: objectives } })
+  revalidatePath(`/dashboard/faculty/module/${moduleId}`)
+  revalidatePath(`/dashboard/student/module/${moduleId}`)
   return { success: true }
 }
 

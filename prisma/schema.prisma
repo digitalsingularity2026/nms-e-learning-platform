@@ -36,6 +36,7 @@ enum QuestionType {
   MATCHING
   SHORT_ANSWER
   PASSAGE
+  BEST_ANSWER
 }
 
 enum AttemptStatus {
@@ -182,6 +183,7 @@ model Module {
   credits     Int
   orderIndex  Int
   passMark    Int      @default(60)
+  learningObjectives String[] @default([])
   maxAttempts Int?
   isPublished Boolean  @default(false)
   createdAt   DateTime @default(now())

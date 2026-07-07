@@ -95,6 +95,7 @@ export default async function StudentDashboard() {
           >
             {(session.user.name ?? "S")[0]}
           </div>
+          <Link href="/profile" className="text-xs px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", textDecoration: "none" }}>Profile</Link>
           <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }) }}>
             <button
               type="submit"

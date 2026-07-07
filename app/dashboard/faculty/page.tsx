@@ -44,6 +44,7 @@ export default async function FacultyDashboard() {
           <div className="flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0" style={{ width: 34, height: 34, background: "#1A3A6B" }}>
             {(session.user.name ?? "F")[0]}
           </div>
+          <Link href="/profile" className="text-xs px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", textDecoration: "none" }}>Profile</Link>
           <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }) }}>
             <button type="submit" className="text-xs px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", border: "none", cursor: "pointer" }}>Sign out</button>
           </form>
@@ -51,9 +52,12 @@ export default async function FacultyDashboard() {
       </header>
 
       <main className="max-w-4xl mx-auto px-7 py-8">
-        <div className="mb-6">
-          <h1 className="font-semibold mb-1" style={{ fontSize: 24, color: "#0C3D26", fontFamily: "serif" }}>My Modules</h1>
-          <p style={{ color: "#6B7280", fontSize: 13 }}>Click a module to manage its lessons, videos, and quiz questions.</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="font-semibold mb-1" style={{ fontSize: 24, color: "#0C3D26", fontFamily: "serif" }}>My Modules</h1>
+            <p style={{ color: "#6B7280", fontSize: 13 }}>Click a module to manage its lessons, videos, and quiz questions.</p>
+          </div>
+          <Link href="/dashboard/faculty/students" style={{ fontSize: 13, color: "#1A3A6B", fontWeight: 600, textDecoration: "none", background: "#EEF2F8", padding: "8px 16px", borderRadius: 8 }}>👥 All Students</Link>
         </div>
 
         <div className="flex flex-col gap-3">

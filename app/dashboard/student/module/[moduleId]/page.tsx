@@ -69,6 +69,7 @@ export default async function ModulePage({ params }: { params: Promise<{ moduleI
         </div>
         <div className="flex items-center gap-3">
           <span style={{ color: "#fff", fontSize: 13 }}>{session.user.name}</span>
+          <Link href="/profile" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", borderRadius: 20, padding: "4px 12px", fontSize: 11, textDecoration: "none" }}>Profile</Link>
           <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }) }}>
             <button type="submit" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", border: "none", borderRadius: 20, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>Sign out</button>
           </form>
@@ -76,7 +77,7 @@ export default async function ModulePage({ params }: { params: Promise<{ moduleI
       </header>
 
       <ModuleView
-        module={{ id: module.id, code: module.code, title: module.title, credits: module.credits, passMark: module.passMark, description: module.description }}
+        module={{ id: module.id, code: module.code, title: module.title, credits: module.credits, passMark: module.passMark, description: module.description, learningObjectives: module.learningObjectives }}
         lessons={module.lessons.map(l => ({
           id: l.id, title: l.title, content: l.content,
           videos: l.videos.map(v => ({ id: v.id, title: v.title, type: v.type, url: v.url })),

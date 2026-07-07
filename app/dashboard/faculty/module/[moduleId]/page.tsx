@@ -103,6 +103,7 @@ export default async function FacultyModulePage({ params }: { params: Promise<{ 
         </div>
         <div className="flex items-center gap-3">
           <span style={{ color: "#fff", fontSize: 13 }}>{session.user.name}</span>
+          <Link href="/profile" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", borderRadius: 20, padding: "4px 12px", fontSize: 11, textDecoration: "none" }}>Profile</Link>
           <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }) }}>
             <button type="submit" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", border: "none", borderRadius: 20, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>Sign out</button>
           </form>
@@ -110,7 +111,7 @@ export default async function FacultyModulePage({ params }: { params: Promise<{ 
       </header>
 
       <FacultyModuleView
-        module={{ id: module.id, code: module.code, title: module.title, isPublished: module.isPublished }}
+        module={{ id: module.id, code: module.code, title: module.title, isPublished: module.isPublished, passMark: module.passMark, learningObjectives: module.learningObjectives }}
         lessons={module.lessons.map(l => ({
           id: l.id, title: l.title, content: l.content, isPublished: l.isPublished,
           videos: l.videos.map(v => ({ id: v.id, title: v.title, url: v.url, type: v.type })),

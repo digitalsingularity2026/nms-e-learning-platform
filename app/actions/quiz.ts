@@ -44,7 +44,7 @@ export async function submitQuizAction(
 
     totalScorable += q.points
 
-    if (q.type === "MCQ" || q.type === "TRUE_FALSE") {
+    if (q.type === "MCQ" || q.type === "BEST_ANSWER" || q.type === "TRUE_FALSE") {
       const correctOpt = q.options.find(o => o.isCorrect)
       const isCorrect = !!raw && raw === correctOpt?.id
       if (isCorrect) earnedPoints += q.points

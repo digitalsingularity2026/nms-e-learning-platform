@@ -16,7 +16,7 @@ const tryArr = (s: string): string[] => { try { return JSON.parse(s) } catch { r
 const tryObj = (s: string): Record<string, string> => { try { return JSON.parse(s) } catch { return {} } }
 
 const TYPE_BADGE: Record<string, string> = {
-  MCQ: "Multiple Choice", TRUE_FALSE: "True / False", MSQ: "Multiple Select (all that apply)",
+  MCQ: "Multiple Choice", BEST_ANSWER: "Best Answer", TRUE_FALSE: "True / False", MSQ: "Multiple Select (all that apply)",
   CLOZE: "Fill in the Blank", SENTENCE_COMPLETION: "Sentence Completion",
   MATCHING: "Matching Pairs", SHORT_ANSWER: "Short Answer — faculty graded",
 }
@@ -104,8 +104,12 @@ export default function QuizPanel({ quiz, moduleId, passMark, hasPassedQuiz }: P
               <p style={{ fontSize: 13, color: "#9CA3AF", margin: "-8px 0 12px", fontStyle: "italic" }}>Hint: ({q.hintText})</p>
             )}
 
-            {/* MCQ / TRUE_FALSE */}
-            {(q.type === "MCQ" || q.type === "TRUE_FALSE") && (
+            {q.type === "BEST_ANSWER" && (
+              <p style={{ fontSize: 12, color: "#9CA3AF", margin: "-8px 0 12px" }}>Several options may seem plausible — choose the single best answer.</p>
+            )}
+
+            {/* MCQ / BEST_ANSWER / TRUE_FALSE */}
+            {(q.type === "MCQ" || q.type === "BEST_ANSWER" || q.type === "TRUE_FALSE") && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {q.options.map((opt, oi) => {
                   const sel = answers[q.id] === opt.id

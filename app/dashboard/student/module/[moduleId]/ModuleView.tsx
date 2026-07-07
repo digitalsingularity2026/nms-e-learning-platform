@@ -13,20 +13,11 @@ type Question = { id: string; text: string; type: string; hintText?: string | nu
 type Quiz  = { id: string; title: string; instructions: string | null; questions: Question[] }
 
 interface Props {
-  module: { id: string; code: string; title: string; credits: number; passMark: number; description: string | null }
+  module: { id: string; code: string; title: string; credits: number; passMark: number; description: string | null; learningObjectives: string[] }
   lessons: Lesson[]
   quiz: Quiz | null
   hasPassedQuiz: boolean
   assessments: StudentAssessment[]
-}
-
-const OBJECTIVES: Record<string, string[]> = {
-  "ENG-101":   ["Read and analyse medical texts at B1+/B2 level", "Apply medical vocabulary and clinical abbreviations", "Write academic essays and clinical communication texts", "Develop listening and speaking skills for clinical discussions"],
-  "CHEM-101":  ["Understand carbon bonding and molecular structure", "Identify functional groups and their biological significance", "Relate organic chemistry to pharmacology and biochemistry", "Solve problems involving molecular structure"],
-  "PHYS-101":  ["Apply mechanics to body movement and physiological forces", "Understand wave physics as it relates to imaging", "Explain electrical principles relevant to cardiac physiology", "Describe the physical basis of radiation and its medical uses"],
-  "BIO-101":   ["Describe cell structure, organelles, and the cell cycle", "Explain DNA replication, transcription, and translation", "Understand Mendelian genetics and inheritance", "Apply biological concepts to mechanisms of human disease"],
-  "STUDY-101": ["Apply evidence-based strategies for deep medical study", "Manage time across multiple concurrent demands", "Demonstrate academic integrity and correct citation practices", "Use self-assessment tools to monitor learning progress"],
-  "ETH-101":   ["Identify core biomedical ethics principles", "Recognise ethical dilemmas in resource-limited settings", "Understand the foundations of professional conduct", "Apply ethical reasoning to case-based scenarios"],
 }
 
 function extractYoutubeId(url: string): string | null {
@@ -42,7 +33,7 @@ export default function ModuleView({ module, lessons, quiz, hasPassedQuiz, asses
 
   const activeLesson     = lessons.find(l => l.id === activeLessonId)
   const activeAssessment = assessments.find(a => a.id === activeAssessmentId)
-  const objectives       = OBJECTIVES[module.code] ?? []
+  const objectives       = module.learningObjectives
 
   return (
     <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
@@ -50,9 +41,13 @@ export default function ModuleView({ module, lessons, quiz, hasPassedQuiz, asses
       <aside style={{ width: 268, background: "#fff", borderRight: "1px solid #E2D9CC", display: "flex", flexDirection: "column", flexShrink: 0, overflowY: "auto" }}>
         <div style={{ padding: "20px 18px 16px", borderBottom: "1px solid #F0EAE0" }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: "#B0A090", letterSpacing: "0.12em", marginBottom: 8 }}>LEARNING OBJECTIVES</div>
-          <ul style={{ margin: 0, paddingLeft: 16 }}>
-            {objectives.map((obj, i) => <li key={i} style={{ fontSize: 11.5, color: "#374151", lineHeight: 1.55, marginBottom: 6 }}>{obj}</li>)}
-          </ul>
+          {objectives.length === 0 ? (
+            <p style={{ fontSize: 11.5, color: "#C5BAB0", margin: 0 }}>Not set yet.</p>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: 16 }}>
+              {objectives.map((obj, i) => <li key={i} style={{ fontSize: 11.5, color: "#374151", lineHeight: 1.55, marginBottom: 6 }}>{obj}</li>)}
+            </ul>
+          )}
         </div>
 
         <div style={{ paddingTop: 16, flex: 1 }}>

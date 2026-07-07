@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
-import { createLesson, updateLesson, deleteLesson, ensureQuiz, createQuestion, deleteQuestion, gradeShortAnswers } from "@/app/actions/faculty"
+import { createLesson, updateLesson, deleteLesson, ensureQuiz, createQuestion, deleteQuestion, gradeShortAnswers, updateModuleSettings } from "@/app/actions/faculty"
 import VideoUploader from "@/components/VideoUploader"
 import AttachmentUploader from "@/components/AttachmentUploader"
 import AssessmentsPanel, { type AssessmentInfo } from "./AssessmentsPanel"
@@ -21,28 +21,35 @@ type PendingAttempt = { id: string; score: number | null; submittedAt: string | 
 const EMPTY_LESSON = { title: "", content: "", isPublished: false }
 const ALL_TYPES = [
   { value: "MCQ",                 label: "Multiple Choice (MCQ)"   },
+  { value: "BEST_ANSWER",         label: "Best Answer"             },
   { value: "TRUE_FALSE",          label: "True / False"            },
   { value: "MSQ",                 label: "Multiple Select (MSQ)"   },
   { value: "CLOZE",               label: "Fill in the Blank"       },
   { value: "SENTENCE_COMPLETION", label: "Sentence Completion"     },
   { value: "MATCHING",            label: "Matching Pairs"          },
-  { value: "SHORT_ANSWER",        label: "Short Answer"            },
   { value: "PASSAGE",             label: "Reading Passage"         },
 ]
-const TYPE_LABEL: Record<string, string> = Object.fromEntries(ALL_TYPES.map(t => [t.value, t.label]))
+// SHORT_ANSWER is retired from new-question creation — the Assessment system
+// now handles manually-graded written answers. Existing SHORT_ANSWER
+// questions and the Pending Grading tab keep working unchanged.
+const TYPE_LABEL: Record<string, string> = { ...Object.fromEntries(ALL_TYPES.map(t => [t.value, t.label])), SHORT_ANSWER: "Short Answer" }
 
 function emptyQForm() {
   return { type: "MCQ", text: "", options: ["", "", "", ""], optionCorrect: [false, false, false, false] as boolean[], correctTF: "True" as "True" | "False", correctAnswer: "", hintText: "", pairs: [{ left: "", right: "" }, { left: "", right: "" }], points: 2, explanation: "", passageContent: "" }
 }
 
 export default function FacultyModuleView({ module, lessons: initialLessons, quiz: initialQuiz, pendingAttempts, assessments, currentUserId }: {
-  module: { id: string; code: string; title: string; isPublished: boolean }
+  module: { id: string; code: string; title: string; isPublished: boolean; passMark: number; learningObjectives: string[] }
   lessons: Lesson[]; quiz: Quiz | null; pendingAttempts: PendingAttempt[]
   assessments: AssessmentInfo[]; currentUserId: string
 }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
-  const [tab, setTab]             = useState<"lessons" | "quiz" | "assessments" | "grading">("lessons")
+  const [tab, setTab]             = useState<"lessons" | "quiz" | "assessments" | "grading" | "settings">("lessons")
+  const [passMarkForm, setPassMarkForm] = useState(module.passMark)
+  const [objectivesForm, setObjectivesForm] = useState<string[]>(module.learningObjectives.length > 0 ? module.learningObjectives : [""])
+  const [settingsSaving, setSettingsSaving] = useState(false)
+  const [settingsSaved, setSettingsSaved]   = useState(false)
   const [editingId, setEditingId] = useState<string | "new" | null>(null)
   const [form, setForm]           = useState(EMPTY_LESSON)
   const [qForm, setQForm]         = useState(emptyQForm())
@@ -51,6 +58,17 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
   const [gradingId, setGradingId]         = useState<string | null>(null)
   const [grades, setGrades]               = useState<Record<string, boolean>>({})
   const [gradingResult, setGradingResult] = useState<{ score: number; passed: boolean } | null>(null)
+  const lastQuestionRef = useRef<HTMLDivElement>(null)
+  const prevQuestionCount = useRef(initialQuiz?.questions.length ?? 0)
+
+  // Scroll the newest question into view once the server confirms it was added
+  useEffect(() => {
+    const count = initialQuiz?.questions.length ?? 0
+    if (count > prevQuestionCount.current) {
+      lastQuestionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+    }
+    prevQuestionCount.current = count
+  }, [initialQuiz?.questions.length])
 
   const refresh = () => startTransition(() => router.refresh())
 
@@ -79,6 +97,22 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
     }
     await createQuestion(module.id, qId, { type: qForm.type, text: qForm.text, options: qForm.options.map((t, i) => ({ text: t, isCorrect: qForm.optionCorrect[i] })), correctAnswer: qForm.correctAnswer, hintText: qForm.hintText, correctTF: qForm.correctTF, pairs: qForm.pairs, points: qForm.points, explanation: qForm.explanation, passageContent: qForm.passageContent })
     setSaving(false); setAddingQ(false); setQForm(emptyQForm()); refresh()
+  }
+
+  function addOption() {
+    setQForm(p => ({ ...p, options: [...p.options, ""], optionCorrect: [...p.optionCorrect, false] }))
+  }
+  function removeOption(i: number) {
+    setQForm(p => ({ ...p, options: p.options.filter((_, j) => j !== i), optionCorrect: p.optionCorrect.filter((_, j) => j !== i) }))
+  }
+
+  async function handleSaveSettings() {
+    setSettingsSaving(true); setSettingsSaved(false)
+    const res = await updateModuleSettings(module.id, { passMark: passMarkForm, learningObjectives: objectivesForm })
+    setSettingsSaving(false)
+    if ("error" in res) { alert(res.error); return }
+    setSettingsSaved(true); refresh()
+    setTimeout(() => setSettingsSaved(false), 2500)
   }
 
   async function handleDeleteQ(qId: string) {
@@ -110,10 +144,10 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
 
         {/* Tab bar */}
         <div style={{ borderBottom: "1px solid #E2D9CC", background: "#fff", display: "flex", paddingLeft: 28, flexShrink: 0 }}>
-          {(["lessons", "quiz", "assessments", "grading"] as const).map(t => (
+          {(["lessons", "quiz", "assessments", "grading", "settings"] as const).map(t => (
             <button key={t} onClick={() => { setTab(t); setEditingId(null); setAddingQ(false); setGradingId(null) }}
               style={{ padding: "14px 22px", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: tab === t ? 600 : 400, color: tab === t ? (t === "grading" && pendingAttempts.length > 0 ? "#B47E2A" : "#0C3D26") : "#6B7280", background: "none", borderBottom: tab === t ? `2px solid ${t === "grading" && pendingAttempts.length > 0 ? "#B47E2A" : "#0C3D26"}` : "2px solid transparent" }}>
-              {t === "lessons" ? `📄 Lessons (${initialLessons.length})` : t === "quiz" ? `📝 Quiz (${initialQuiz?.questions.length ?? 0})` : t === "assessments" ? `📋 Assessments (${assessments.length})` : `✏️ Pending Grading${pendingAttempts.length > 0 ? ` (${pendingAttempts.length})` : ""}`}
+              {t === "lessons" ? `📄 Lessons (${initialLessons.length})` : t === "quiz" ? `📝 Quiz (${initialQuiz?.questions.length ?? 0})` : t === "assessments" ? `📋 Assessments (${assessments.length})` : t === "grading" ? `✏️ Pending Grading${pendingAttempts.length > 0 ? ` (${pendingAttempts.length})` : ""}` : "⚙️ Settings"}
             </button>
           ))}
         </div>
@@ -215,7 +249,7 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
               )}
 
               {initialQuiz?.questions.map((q, i) => (
-                <div key={q.id} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", marginBottom: 10, border: "1px solid #E2D9CC" }}>
+                <div key={q.id} ref={i === initialQuiz.questions.length - 1 ? lastQuestionRef : undefined} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", marginBottom: 10, border: "1px solid #E2D9CC" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div style={{ flex: 1, paddingRight: 12 }}>
                       <div style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
@@ -230,7 +264,7 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
                           {q.options.map(o => <span key={o.id} style={{ fontSize: 11, background: "#F3F4F6", padding: "2px 8px", borderRadius: 6, color: "#374151" }}>{o.text} → {o.matchText}</span>)}
                         </div>
                       )}
-                      {(q.type === "MCQ" || q.type === "MSQ" || q.type === "TRUE_FALSE") && (
+                      {(q.type === "MCQ" || q.type === "BEST_ANSWER" || q.type === "MSQ" || q.type === "TRUE_FALSE") && (
                         <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 5 }}>
                           {q.options.map(o => <span key={o.id} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 100, background: o.isCorrect ? "#E3F0E9" : "#F3F4F6", color: o.isCorrect ? "#0C3D26" : "#6B7280", fontWeight: o.isCorrect ? 600 : 400 }}>{o.isCorrect && "✓ "}{o.text}</span>)}
                         </div>
@@ -289,6 +323,21 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
                           <input value={opt} onChange={e => { const o = [...Q.options]; o[i] = e.target.value; setQForm(p => ({ ...p, options: o })) }} placeholder={`Option ${String.fromCharCode(65 + i)}`} style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${Q.optionCorrect[i] ? "#0C3D26" : "#E2D9CC"}`, fontSize: 13, outline: "none", background: Q.optionCorrect[i] ? "#E3F0E9" : "#fff" }} />
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {Q.type === "BEST_ANSWER" && (
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", letterSpacing: "0.08em", display: "block", marginBottom: 4 }}>OPTIONS — select the ONE best answer</label>
+                      <p style={{ fontSize: 11.5, color: "#9CA3AF", margin: "0 0 8px" }}>Use when several options are plausible but only one is the best choice — e.g. a clinical vignette.</p>
+                      {Q.options.map((opt, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
+                          <input type="radio" name="best_correct" checked={Q.optionCorrect[i]} onChange={() => setQForm(p => ({ ...p, optionCorrect: p.options.map((_, j) => j === i) }))} style={{ accentColor: "#0C3D26", width: 15, height: 15, cursor: "pointer", flexShrink: 0 }} />
+                          <input value={opt} onChange={e => { const o = [...Q.options]; o[i] = e.target.value; setQForm(p => ({ ...p, options: o })) }} placeholder={`Option ${String.fromCharCode(65 + i)}`} style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${Q.optionCorrect[i] ? "#0C3D26" : "#E2D9CC"}`, fontSize: 13, outline: "none", background: Q.optionCorrect[i] ? "#E3F0E9" : "#fff" }} />
+                          {Q.options.length > 3 && <button type="button" onClick={() => removeOption(i)} style={{ background: "none", border: "none", color: "#B91C1C", cursor: "pointer", fontSize: 14, flexShrink: 0 }}>✕</button>}
+                        </div>
+                      ))}
+                      {Q.options.length < 6 && <button type="button" onClick={addOption} style={{ background: "#E3F0E9", color: "#0C3D26", border: "none", borderRadius: 7, padding: "5px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", marginTop: 4 }}>+ Add Option</button>}
                     </div>
                   )}
 
@@ -373,6 +422,45 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── SETTINGS TAB ───────────────────────────────────────────── */}
+          {tab === "settings" && (
+            <div style={{ padding: "28px 36px", maxWidth: 700 }}>
+              <h2 style={{ fontFamily: "serif", fontSize: 20, color: "#0C3D26", margin: "0 0 4px", fontWeight: 600 }}>Module Settings</h2>
+              <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 22px" }}>These control what students see on the module overview and how the quiz is scored.</p>
+
+              <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E2D9CC", padding: "22px 24px", marginBottom: 20 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", letterSpacing: "0.08em", display: "block", marginBottom: 8 }}>QUIZ PASS MARK (%)</label>
+                <input type="number" min={0} max={100} value={passMarkForm} onChange={e => setPassMarkForm(parseInt(e.target.value) || 0)}
+                  style={{ width: 100, padding: "9px 12px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 14, outline: "none" }} />
+                <p style={{ fontSize: 11.5, color: "#9CA3AF", margin: "8px 0 0" }}>Students need this percentage on the module quiz to complete the module and unlock the next one.</p>
+              </div>
+
+              <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E2D9CC", padding: "22px 24px", marginBottom: 20 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", letterSpacing: "0.08em", display: "block", marginBottom: 8 }}>LEARNING OBJECTIVES</label>
+                <p style={{ fontSize: 11.5, color: "#9CA3AF", margin: "0 0 10px" }}>Shown to students in the module sidebar. Add as many as you like.</p>
+                {objectivesForm.map((obj, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
+                    <input value={obj} onChange={e => { const o = [...objectivesForm]; o[i] = e.target.value; setObjectivesForm(o) }}
+                      placeholder={`Objective ${i + 1}`}
+                      style={{ flex: 1, padding: "9px 12px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 13, outline: "none" }} />
+                    {objectivesForm.length > 1 && (
+                      <button type="button" onClick={() => setObjectivesForm(objectivesForm.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "#B91C1C", cursor: "pointer", fontSize: 14, flexShrink: 0 }}>✕</button>
+                    )}
+                  </div>
+                ))}
+                <button type="button" onClick={() => setObjectivesForm([...objectivesForm, ""])} style={{ background: "#E3F0E9", color: "#0C3D26", border: "none", borderRadius: 7, padding: "5px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", marginTop: 4 }}>+ Add Objective</button>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <button onClick={handleSaveSettings} disabled={settingsSaving}
+                  style={{ background: settingsSaving ? "#E5E7EB" : "#0C3D26", color: settingsSaving ? "#9CA3AF" : "#fff", border: "none", borderRadius: 8, padding: "9px 22px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  {settingsSaving ? "Saving…" : "Save Settings"}
+                </button>
+                {settingsSaved && <span style={{ fontSize: 13, color: "#15803D", fontWeight: 500 }}>✓ Saved</span>}
+              </div>
             </div>
           )}
 
