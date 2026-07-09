@@ -44,7 +44,7 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
   assessments: AssessmentInfo[]; currentUserId: string
 }) {
   const router = useRouter()
-  const [, startTransition] = useTransition()
+  const [isRefreshing, startTransition] = useTransition()
   const [tab, setTab]             = useState<"lessons" | "quiz" | "assessments" | "grading" | "settings">("lessons")
   const [passMarkForm, setPassMarkForm] = useState(module.passMark)
   const [objectivesForm, setObjectivesForm] = useState<string[]>(module.learningObjectives.length > 0 ? module.learningObjectives : [""])
@@ -58,19 +58,22 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
   const [gradingId, setGradingId]         = useState<string | null>(null)
   const [grades, setGrades]               = useState<Record<string, boolean>>({})
   const [gradingResult, setGradingResult] = useState<{ score: number; passed: boolean } | null>(null)
-  const lastQuestionRef = useRef<HTMLDivElement>(null)
-  const prevQuestionCount = useRef(initialQuiz?.questions.length ?? 0)
+  const bottomOfQuestionsRef = useRef<HTMLDivElement>(null)
+  const [pendingQuestionScroll, setPendingQuestionScroll] = useState(false)
 
-  // Scroll the newest question into view once the server confirms it was added
+  // Scroll to the newest question once the post-add refresh has actually landed
   useEffect(() => {
-    const count = initialQuiz?.questions.length ?? 0
-    if (count > prevQuestionCount.current) {
-      lastQuestionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+    if (!isRefreshing && pendingQuestionScroll) {
+      bottomOfQuestionsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+      setPendingQuestionScroll(false)
     }
-    prevQuestionCount.current = count
-  }, [initialQuiz?.questions.length])
+  }, [isRefreshing, pendingQuestionScroll])
 
   const refresh = () => startTransition(() => router.refresh())
+  const refreshAndScrollToNewQuestion = () => {
+    setPendingQuestionScroll(true)
+    startTransition(() => router.refresh())
+  }
 
   function openNew() { setForm(EMPTY_LESSON); setEditingId("new") }
   function openEdit(l: Lesson) { setForm({ title: l.title, content: l.content, isPublished: l.isPublished }); setEditingId(l.id) }
@@ -96,7 +99,7 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
       qId = res.quizId
     }
     await createQuestion(module.id, qId, { type: qForm.type, text: qForm.text, options: qForm.options.map((t, i) => ({ text: t, isCorrect: qForm.optionCorrect[i] })), correctAnswer: qForm.correctAnswer, hintText: qForm.hintText, correctTF: qForm.correctTF, pairs: qForm.pairs, points: qForm.points, explanation: qForm.explanation, passageContent: qForm.passageContent })
-    setSaving(false); setAddingQ(false); setQForm(emptyQForm()); refresh()
+    setSaving(false); setAddingQ(false); setQForm(emptyQForm()); refreshAndScrollToNewQuestion()
   }
 
   function addOption() {
@@ -249,7 +252,7 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
               )}
 
               {initialQuiz?.questions.map((q, i) => (
-                <div key={q.id} ref={i === initialQuiz.questions.length - 1 ? lastQuestionRef : undefined} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", marginBottom: 10, border: "1px solid #E2D9CC" }}>
+                <div key={q.id} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", marginBottom: 10, border: "1px solid #E2D9CC" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div style={{ flex: 1, paddingRight: 12 }}>
                       <div style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
@@ -281,6 +284,7 @@ export default function FacultyModuleView({ module, lessons: initialLessons, qui
                   </div>
                 </div>
               ))}
+              <div ref={bottomOfQuestionsRef} />
 
               {addingQ && (
                 <div style={{ background: "#fff", borderRadius: 12, padding: "22px 24px", border: "1.5px solid #0C3D26", marginTop: 12 }}>
