@@ -1,41 +1,157 @@
 @import "tailwindcss";
 
+/* ── Design tokens (v2 — 2026 visual redesign) ───────────────────────────
+   Source of truth: design handoff bundle, design_reference/tokens/*.css.
+   Fonts are wired separately via next/font/local in app/layout.tsx, which
+   already exposes --font-display / --font-body as CSS variables. */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Primary: Green */
+  --green-900: #0B3B25;
+  --green-800: #0F4A2F;
+  --green-700: #154D33;   /* PRIMARY — CTAs, active states, brand */
+  --green-600: #1F6B45;   /* hover */
+  --green-500: #2E8659;   /* progress / success accents */
+  --green-100: #E1EFE7;   /* tint — selected rows, success surfaces */
+  --green-50:  #F2F8F4;   /* faint tint — hover backgrounds */
+
+  /* Accent: Gold */
+  --gold-700: #9C6B1F;    /* gold text-on-light (accessible) */
+  --gold-600: #E8A33D;    /* ACCENT — highlights, secondary CTA, quiz/assignment cues */
+  --gold-100: #FDF1DF;    /* tint */
+
+  /* Neutrals (clean, flat) */
+  --white: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-subtle: #F6F8F7;   /* app background */
+  --surface-sunken: #EEF1EF;   /* stripes, track backgrounds */
+  --border: #E3E7E5;           /* default hairline border */
+  --border-strong: #CBD2CE;
+
+  --ink-900: #12181A;    /* headings / primary text */
+  --ink-700: #33393C;    /* body text */
+  --ink-500: #667079;    /* secondary text */
+  --ink-400: #8D969C;    /* tertiary / meta text */
+  --ink-200: #D3D8D6;    /* disabled */
+
+  /* Role hues (badges only) */
+  --blue-700: #1D4E89;
+  --blue-100: #E7EFF8;
+  --violet-700: #5B3A94;
+  --violet-100: #EFE9F7;
+  --brown-700: #7A4A21;
+  --brown-100: #F4EBE0;
+
+  /* Semantic */
+  --success-700: #1F8A5B;
+  --success-100: #E3F5EC;
+  --error-700: #C0362D;
+  --error-100: #FBEAE8;
+  --warning-700: #9C6B1F;
+  --warning-100: #FDF1DF;
+
+  /* Semantic aliases */
+  --surface-page: var(--surface-subtle);
+  --surface-card: var(--surface);
+  --surface-header: var(--green-700);
+  --surface-tint-green: var(--green-100);
+  --surface-tint-gold: var(--gold-100);
+
+  --border-default: var(--border);
+  --border-focus: var(--green-700);
+
+  --text-heading: var(--ink-900);
+  --text-body: var(--ink-700);
+  --text-secondary: var(--ink-500);
+  --text-tertiary: var(--ink-400);
+  --text-on-dark: #FFFFFF;
+  --text-on-dark-muted: #B9D6C4;
+  --text-accent: var(--gold-700);
+  --text-link: var(--green-700);
+
+  --brand-primary: var(--green-700);
+  --brand-primary-hover: var(--green-600);
+  --brand-accent: var(--gold-600);
+
+  --gradient-primary: linear-gradient(135deg, var(--green-700), var(--green-500));
+  --gradient-header: linear-gradient(160deg, #0F4A2F 0%, #154D33 60%, #1B5A3D 100%);
+
+  /* Type scale */
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --text-display-lg: 600 28px/1.2 var(--font-display);
+  --text-display-md: 600 24px/1.25 var(--font-display);
+  --text-display-sm: 600 20px/1.3 var(--font-display);
+  --text-heading-md: 600 17px/1.35 var(--font-display);
+  --text-heading-sm: 600 15px/1.4 var(--font-display);
+  --text-body-lg: 400 16px/1.65 var(--font-body);
+  --text-body-md: 400 14px/1.5 var(--font-body);
+  --text-body-sm: 500 13px/1.5 var(--font-body);
+  --text-body-xs: 500 12px/1.5 var(--font-body);
+  --text-label-xs: 600 11px/1.4 var(--font-body);
+  --text-micro: 700 10px/1.3 var(--font-body);
+  --tracking-label: 0.06em;
+  --tracking-eyebrow: 0.08em;
+
+  /* Spacing scale (px) */
+  --space-1: 3px; --space-2: 5px; --space-3: 6px; --space-4: 8px; --space-5: 10px;
+  --space-6: 12px; --space-7: 14px; --space-8: 16px; --space-9: 18px; --space-10: 20px;
+  --space-11: 22px; --space-12: 24px; --space-14: 28px; --space-16: 32px; --space-20: 40px;
+
+  --pad-button: 9px 20px;
+  --pad-button-sm: 5px 14px;
+  --pad-input: 10px 14px;
+  --pad-card: 24px 26px;
+  --pad-card-lg: 28px 32px;
+  --pad-page-x: 28px;
+
+  /* Radii — mostly square, full rounding reserved for pills/avatars */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-pill: 100px;
+
+  /* Shadows — the one depth cue, replaces borders on white surfaces */
+  --shadow-card: 0 1px 2px rgba(18,24,26,0.06), 0 1px 1px rgba(18,24,26,0.04);
+  --shadow-card-hover: 0 4px 16px rgba(18,24,26,0.10);
+  --shadow-modal: 0 20px 50px rgba(18,24,26,0.24);
+  --shadow-login-card: 0 20px 60px rgba(11,59,37,0.18);
+
+  --border-width-default: 1px;
+  --border-width-strong: 1.5px;
+
+  --background: var(--surface-subtle);
+  --foreground: var(--ink-900);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-body);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* ── Interaction: shadow-lift hover for cards/rows (v2 — no scale/rotate) ── */
+.card-hover { transition: box-shadow 0.15s ease; }
+.card-hover:hover { box-shadow: var(--shadow-card-hover); }
+
 /* ── Lesson prose ─────────────────────────────────────────────────────── */
-.lesson-prose h2 { font-size: 1.375rem; font-weight: 600; color: #0C3D26; margin: 0 0 0.875rem; font-family: serif; }
-.lesson-prose h3 { font-size: 1.125rem; font-weight: 600; color: #1A1A1A; margin: 1.5rem 0 0.625rem; border-bottom: 1px solid #F0EAE0; padding-bottom: 0.375rem; }
+.lesson-prose h2 { font-size: 1.375rem; font-weight: 600; color: var(--green-700); margin: 0 0 0.875rem; font-family: var(--font-display); }
+.lesson-prose h3 { font-size: 1.125rem; font-weight: 600; color: var(--ink-900); margin: 1.5rem 0 0.625rem; border-bottom: 1px solid var(--border); padding-bottom: 0.375rem; font-family: var(--font-display); }
 .lesson-prose p { margin: 0 0 0.875rem; }
-.lesson-prose strong { font-weight: 600; color: #111; }
-.lesson-prose em { font-style: italic; color: #4B5563; }
+.lesson-prose strong { font-weight: 600; color: var(--ink-900); }
+.lesson-prose em { font-style: italic; color: var(--ink-500); }
 .lesson-prose table { width: 100%; border-collapse: collapse; margin: 0.875rem 0 1.25rem; font-size: 0.875rem; }
-.lesson-prose thead tr { background: #0C3D26; }
+.lesson-prose thead tr { background: var(--green-700); }
 .lesson-prose th { padding: 0.5rem 0.875rem; text-align: left; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.05em; color: #fff; }
-.lesson-prose td { padding: 0.5625rem 0.875rem; border-bottom: 1px solid #F0EAE0; color: #374151; }
-.lesson-prose tr:nth-child(even) td { background: #FAFAF8; }
-.lesson-prose blockquote { border-left: 3px solid #B47E2A; padding: 0.875rem 1.25rem; background: #FBF4E3; margin: 1.125rem 0; border-radius: 0 0.5rem 0.5rem 0; }
+.lesson-prose td { padding: 0.5625rem 0.875rem; border-bottom: 1px solid var(--border); color: var(--ink-700); }
+.lesson-prose tr:nth-child(even) td { background: var(--surface-subtle); }
+.lesson-prose blockquote { border-left: 3px solid var(--gold-600); padding: 0.875rem 1.25rem; background: var(--gold-100); margin: 1.125rem 0; border-radius: 0 var(--radius-md) var(--radius-md) 0; }
 .lesson-prose ol, .lesson-prose ul { padding-left: 1.375rem; margin: 0.625rem 0 1rem; }
 .lesson-prose li { margin-bottom: 0.5rem; line-height: 1.65; }

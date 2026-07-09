@@ -19,8 +19,9 @@ export function fileKindLabel(mimeType: string | null, url: string): string {
   return "File"
 }
 
+/** Phosphor icon name (fill weight) for this file's kind. */
 export function fileIcon(mimeType: string | null, url: string): string {
-  if (isAudioFile(mimeType, url)) return "🎧"
-  if (mimeType === "application/pdf" || /\.pdf$/i.test(url)) return "📄"
-  return "📎"
+  if (isAudioFile(mimeType, url)) return "headphones"
+  if (mimeType === "application/pdf" || /\.pdf$/i.test(url)) return "file-text"
+  return "paperclip"
 }

@@ -3,6 +3,9 @@
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import { Icon } from "@/components/ui/Icon"
+import { Input } from "@/components/ui/Input"
+import { Button } from "@/components/ui/Button"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -34,82 +37,48 @@ export default function LoginPage() {
 
   return (
     <main
-      className="min-h-screen flex items-center justify-center"
-      style={{ background: "linear-gradient(150deg, #0A3020 0%, #082818 55%, #041510 100%)" }}
+      style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--gradient-header)" }}
     >
-      <div className="bg-white rounded-2xl p-12 w-full max-w-md shadow-2xl">
-        <div className="text-center mb-8">
-          <div
-            className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl"
-            style={{ background: "linear-gradient(135deg, #0C3D26, #1B5E3B)" }}
-          >
-            🏥
+      <div style={{ background: "#fff", borderRadius: "var(--radius-lg)", padding: 48, width: "100%", maxWidth: 400, boxShadow: "var(--shadow-login-card)" }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ width: 56, height: 56, borderRadius: "var(--radius-xl)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", background: "var(--green-700)" }}>
+            <Icon name="first-aid-kit" size={26} color="#fff" />
           </div>
-          <h1 className="text-2xl font-semibold mb-1" style={{ color: "#0C3D26" }}>
-            Northern Medical School
-          </h1>
-          <p className="text-xs tracking-widest" style={{ color: "#9CA3AF" }}>
-            ONLINE LEARNING PLATFORM
-          </p>
+          <h1 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "var(--green-700)", margin: "0 0 4px" }}>Northern Medical School</h1>
+          <p style={{ fontSize: 11, letterSpacing: "0.14em", color: "var(--ink-400)", margin: 0, textTransform: "uppercase" }}>Online Learning Platform</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label
-              className="block text-xs font-semibold mb-1.5 tracking-wide"
-              style={{ color: "#6B7280" }}
-            >
-              EMAIL ADDRESS
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              className="w-full px-4 py-3 rounded-lg border text-sm outline-none"
-              style={{ borderColor: "#E2D9CC", background: "#FAFAF8" }}
-            />
-          </div>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <Input
+            label="EMAIL ADDRESS"
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            required
+            style={{ padding: "11px 14px" }}
+          />
 
-          <div>
-            <label
-              className="block text-xs font-semibold mb-1.5 tracking-wide"
-              style={{ color: "#6B7280" }}
-            >
-              PASSWORD
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              className="w-full px-4 py-3 rounded-lg border text-sm outline-none"
-              style={{ borderColor: "#E2D9CC", background: "#FAFAF8" }}
-            />
-          </div>
+          <Input
+            label="PASSWORD"
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            required
+            style={{ padding: "11px 14px" }}
+          />
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg">
+            <p style={{ fontSize: 13, color: "var(--error-700)", background: "var(--error-100)", padding: "8px 16px", borderRadius: "var(--radius-sm)", margin: 0 }}>
               {error}
             </p>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 rounded-lg text-white font-semibold text-sm mt-2 transition-opacity"
-            style={{
-              background: "linear-gradient(135deg, #0C3D26, #1B5E3B)",
-              opacity: loading ? 0.6 : 1,
-            }}
-          >
-            {loading ? "Signing in…" : "Sign In →"}
-          </button>
+          <Button type="submit" variant="primary" disabled={loading} style={{ width: "100%", padding: 12 }}>
+            {loading ? "Signing in…" : <>Sign In <Icon name="arrow-right" size={14} /></>}
+          </Button>
 
-          <p className="text-center">
-            <a href="/forgot-password" className="text-xs" style={{ color: "#6B7280" }}>
-              Forgot your password?
-            </a>
+          <p style={{ textAlign: "center", margin: 0 }}>
+            <a href="/forgot-password" style={{ fontSize: 12, color: "var(--ink-500)", textDecoration: "none" }}>Forgot your password?</a>
           </p>
         </form>
       </div>

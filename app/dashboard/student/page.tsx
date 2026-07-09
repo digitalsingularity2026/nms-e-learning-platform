@@ -3,14 +3,19 @@ import { signOut } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import Link from "next/link"
+import { Navbar } from "@/components/ui/Navbar"
+import { Avatar } from "@/components/ui/Avatar"
+import { Button } from "@/components/ui/Button"
+import { Icon } from "@/components/ui/Icon"
+import { ProgressBar } from "@/components/ui/ProgressBar"
 
 const MOD_STYLE: Record<string, { icon: string; color: string }> = {
-  "ENG-101":   { icon: "📖", color: "#1B5E3B" },
-  "CHEM-101":  { icon: "⚗️",  color: "#1A3A6B" },
-  "PHYS-101":  { icon: "⚡",  color: "#4A1A6B" },
-  "BIO-101":   { icon: "🧬",  color: "#5A2800" },
-  "STUDY-101": { icon: "📚",  color: "#2D4A1A" },
-  "ETH-101":   { icon: "⚖️",  color: "#1A1A5A" },
+  "ENG-101":   { icon: "book-open",  color: "#1F6B45" },
+  "CHEM-101":  { icon: "flask",      color: "#1D4E89" },
+  "PHYS-101":  { icon: "lightning",  color: "#5B3A94" },
+  "BIO-101":   { icon: "dna",        color: "#7A4A21" },
+  "STUDY-101": { icon: "books",      color: "#2E8659" },
+  "ETH-101":   { icon: "scales",     color: "#33393C" },
 }
 
 async function ensureEnrolled(studentId: string) {
@@ -51,8 +56,8 @@ export default async function StudentDashboard() {
   const course = await ensureEnrolled(session.user.id)
   if (!course) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F7F3ED" }}>
-        <p style={{ color: "#6B7280" }}>No curriculum found. Please contact your administrator.</p>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-subtle)" }}>
+        <p style={{ color: "var(--ink-500)" }}>No curriculum found. Please contact your administrator.</p>
       </div>
     )
   }
@@ -68,145 +73,101 @@ export default async function StudentDashboard() {
   const pct = totalCredits > 0 ? Math.round((earnedCredits / totalCredits) * 100) : 0
 
   return (
-    <div className="min-h-screen" style={{ background: "#F7F3ED" }}>
-      <header
-        className="flex items-center justify-between px-8 sticky top-0 z-10"
-        style={{ background: "#0C3D26", height: 64 }}
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-xl">🏥</span>
-          <div>
-            <div className="text-white font-semibold" style={{ fontFamily: "serif", fontSize: 17, lineHeight: 1.2 }}>
-              Northern Medical School
-            </div>
-            <div style={{ color: "#7DB899", fontSize: 10, letterSpacing: "0.14em" }}>
-              ONLINE LEARNING PLATFORM
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <div className="text-white font-medium" style={{ fontSize: 13 }}>{session.user.name}</div>
-            <div style={{ color: "#7DB899", fontSize: 11 }}>Year 1 — Foundation Phase</div>
-          </div>
-          <div
-            className="flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0"
-            style={{ width: 34, height: 34, background: "#B47E2A" }}
-          >
-            {(session.user.name ?? "S")[0]}
-          </div>
-          <Link href="/profile" className="text-xs px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", textDecoration: "none" }}>Profile</Link>
-          <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }) }}>
-            <button
-              type="submit"
-              className="text-xs px-3 py-1.5 rounded-full"
-              style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE" }}
-            >
-              Sign out
-            </button>
-          </form>
-        </div>
-      </header>
+    <div style={{ minHeight: "100vh", background: "var(--surface-subtle)" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 10 }}>
+        <Navbar
+          subtitle="ONLINE LEARNING PLATFORM"
+          userName={session.user.name}
+          userSub="Year 1 — Foundation Phase"
+          right={
+            <>
+              <Avatar name={session.user.name} bg="var(--gold-600)" />
+              <Link href="/profile" style={{ textDecoration: "none" }}><Button variant="ghostDark" size="sm">Profile</Button></Link>
+              <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }) }}>
+                <Button type="submit" variant="ghostDark" size="sm">Sign out</Button>
+              </form>
+            </>
+          }
+        />
+      </div>
 
-      <main className="max-w-5xl mx-auto px-7 py-8">
-        <div
-          className="flex items-center justify-between rounded-2xl px-8 py-6 mb-7"
-          style={{ background: "#fff", border: "1px solid #E2D9CC" }}
-        >
+      <main style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 28px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff", borderRadius: "var(--radius-lg)", padding: "24px 32px", marginBottom: 28, boxShadow: "var(--shadow-card)" }}>
           <div>
-            <h1 className="font-semibold mb-1" style={{ fontSize: 24, color: "#0C3D26", fontFamily: "serif" }}>
+            <h1 style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--ink-900)", margin: "0 0 4px", fontWeight: 600 }}>
               Year 1 — {course.title}
             </h1>
-            <p className="text-sm" style={{ color: "#6B7280" }}>
+            <p style={{ fontSize: 13, color: "var(--ink-500)", margin: 0 }}>
               Complete all 6 modules to advance to Year 2: Basic Medical Sciences
             </p>
           </div>
-          <div className="text-right shrink-0">
-            <div className="font-semibold" style={{ fontSize: 11, color: "#9CA3AF", letterSpacing: "0.08em", marginBottom: 6 }}>
+          <div style={{ textAlign: "right", flexShrink: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-400)", letterSpacing: "0.05em", marginBottom: 6 }}>
               PROGRESS
             </div>
-            <div className="font-bold" style={{ fontSize: 28, color: "#0C3D26", fontFamily: "serif", lineHeight: 1 }}>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 600, color: "var(--green-700)", lineHeight: 1 }}>
               {earnedCredits}
-              <span style={{ fontSize: 14, color: "#9CA3AF", fontWeight: 400 }}>/{totalCredits} credits</span>
+              <span style={{ fontSize: 14, color: "var(--ink-400)", fontWeight: 400 }}>/{totalCredits} credits</span>
             </div>
-            <div className="rounded-full overflow-hidden mt-2" style={{ width: 200, height: 6, background: "#EDE8E0" }}>
-              <div
-                className="h-full rounded-full"
-                style={{ width: `${pct}%`, background: "linear-gradient(90deg, #0C3D26, #2D7A50)", transition: "width 0.5s ease" }}
-              />
+            <div style={{ marginTop: 8 }}>
+              <ProgressBar percent={pct} width={200} />
             </div>
-            <div style={{ fontSize: 11, color: "#B0A090", marginTop: 3 }}>{pct}% complete</div>
+            <div style={{ fontSize: 11, color: "var(--ink-400)", marginTop: 3 }}>{pct}% complete</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mb-4">
-          <h2 className="font-semibold" style={{ fontSize: 18, color: "#1A1A1A", fontFamily: "serif" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 17, color: "var(--ink-900)", margin: 0, fontWeight: 600 }}>
             Year 1 Modules
           </h2>
-          <span
-            className="font-bold rounded-full px-2 py-0.5"
-            style={{ fontSize: 10, background: "#E3F0E9", color: "#0C3D26", letterSpacing: "0.08em" }}
-          >
+          <span style={{ fontSize: 10, fontWeight: 600, background: "var(--green-100)", color: "var(--green-700)", padding: "3px 10px", borderRadius: "var(--radius-pill)", letterSpacing: "0.04em" }}>
             FOUNDATION PHASE
           </span>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
           {progress.map(({ module, isUnlocked, isCompleted }) => {
-            const cfg = MOD_STYLE[module.code] ?? { icon: "📄", color: "#374151" }
+            const cfg = MOD_STYLE[module.code] ?? { icon: "file-text", color: "var(--ink-700)" }
             const card = (
               <div
-                className="rounded-xl p-5 relative h-full"
                 style={{
                   background: "#fff",
-                  border: isCompleted ? "1.5px solid #86BFA4" : "1.5px solid #E2D9CC",
-                  opacity: isUnlocked ? 1 : 0.55,
+                  borderRadius: "var(--radius-lg)",
+                  padding: 20,
+                  position: "relative",
+                  height: "100%",
+                  boxShadow: "var(--shadow-card)",
+                  border: isCompleted ? "1.5px solid var(--green-500)" : "1px solid var(--border)",
+                  opacity: isUnlocked ? 1 : 0.5,
                 }}
               >
                 {isCompleted && (
-                  <span
-                    className="absolute text-white font-bold rounded-full px-2 py-0.5"
-                    style={{ top: 12, right: 12, background: "#0C3D26", fontSize: 10 }}
-                  >
-                    ✓ DONE
+                  <span style={{ position: "absolute", top: 12, right: 12, background: "var(--green-700)", color: "#fff", fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: "var(--radius-pill)", display: "flex", alignItems: "center", gap: 3 }}>
+                    <Icon name="check-circle" size={11} /> DONE
                   </span>
                 )}
                 {!isUnlocked && (
-                  <span
-                    className="absolute font-semibold rounded-full px-2 py-0.5"
-                    style={{ top: 12, right: 12, background: "#F3F4F6", color: "#9CA3AF", fontSize: 10 }}
-                  >
-                    🔒 LOCKED
+                  <span style={{ position: "absolute", top: 12, right: 12, background: "var(--surface-subtle)", color: "var(--ink-400)", fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: "var(--radius-pill)", display: "flex", alignItems: "center", gap: 3 }}>
+                    <Icon name="lock-key" size={11} /> LOCKED
                   </span>
                 )}
-                <div className="flex items-center gap-2 mb-3">
-                  <div
-                    className="flex items-center justify-center rounded-lg text-xl"
-                    style={{ width: 42, height: 42, background: `${cfg.color}14`, border: `1px solid ${cfg.color}22` }}
-                  >
-                    {cfg.icon}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: "var(--radius-md)", background: `${cfg.color}18`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Icon name={cfg.icon} size={19} color={cfg.color} />
                   </div>
-                  <span className="font-bold" style={{ fontSize: 10, color: cfg.color, letterSpacing: "0.1em" }}>
-                    {module.code}
-                  </span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: cfg.color, letterSpacing: "0.08em" }}>{module.code}</span>
                 </div>
-                <h3
-                  className="font-semibold leading-snug mb-3"
-                  style={{ fontFamily: "serif", fontSize: 16, color: "#1A1A1A", paddingRight: isCompleted || !isUnlocked ? 56 : 0 }}
-                >
+                <h3 style={{ fontFamily: "var(--font-display)", fontSize: 15, color: "var(--ink-900)", margin: "0 0 10px", fontWeight: 600, lineHeight: 1.3, paddingRight: isCompleted || !isUnlocked ? 56 : 0 }}>
                   {module.title}
                 </h3>
                 {module.description && (
-                  <p className="text-xs mb-3 leading-relaxed" style={{ color: "#6B7280" }}>
+                  <p style={{ fontSize: 12, color: "var(--ink-500)", margin: "0 0 14px", lineHeight: 1.55 }}>
                     {module.description}
                   </p>
                 )}
-                <div
-                  className="flex gap-3 text-xs pt-3"
-                  style={{ borderTop: "1px solid #F0EAE0", color: "#9CA3AF" }}
-                >
-                  <span>🎓 {module.credits} credits</span>
-                  <span>📝 Pass: {module.passMark}%</span>
+                <div style={{ display: "flex", gap: 14, fontSize: 12, color: "var(--ink-400)", paddingTop: 12, borderTop: "1px solid var(--surface-sunken)" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Icon name="graduation-cap" size={13} /> {module.credits} credits</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Icon name="note-pencil" size={13} /> Pass: {module.passMark}%</span>
                 </div>
               </div>
             )
@@ -215,8 +176,8 @@ export default async function StudentDashboard() {
               <Link
                 key={module.id}
                 href={`/dashboard/student/module/${module.id}`}
-                className="block transition-all duration-150 hover:scale-[1.02] hover:shadow-lg"
-                style={{ textDecoration: "none" }}
+                className="card-hover"
+                style={{ textDecoration: "none", display: "block", borderRadius: "var(--radius-lg)" }}
               >
                 {card}
               </Link>
