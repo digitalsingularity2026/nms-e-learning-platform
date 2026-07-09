@@ -39,15 +39,15 @@ export async function requestPasswordReset(email: string) {
       await sendEmail(
         trimmed,
         "Reset your NMS Platform password",
-        `<div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; color: #2D2D2D;">
-          <h2 style="color: #0C3D26;">Northern Medical School</h2>
+        `<div style="font-family: 'Inter', Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #33393C;">
+          <h2 style="color: #154D33; font-family: 'Space Grotesk', Arial, sans-serif;">Northern Medical School</h2>
           <p>Hello${user.name ? ` ${user.name}` : ""},</p>
           <p>We received a request to reset your password on the NMS Online Learning Platform.</p>
           <p style="margin: 24px 0;">
-            <a href="${link}" style="background: #0C3D26; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Reset Password</a>
+            <a href="${link}" style="background: #154D33; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">Reset Password</a>
           </p>
-          <p style="font-size: 13px; color: #6B7280;">Or copy this link into your browser:<br>${link}</p>
-          <p style="font-size: 13px; color: #6B7280;">This link expires in 1 hour. If you did not request a password reset, you can safely ignore this email — your password will not change.</p>
+          <p style="font-size: 13px; color: #667079;">Or copy this link into your browser:<br>${link}</p>
+          <p style="font-size: 13px; color: #667079;">This link expires in 1 hour. If you did not request a password reset, you can safely ignore this email — your password will not change.</p>
         </div>`
       )
     } catch (err) {

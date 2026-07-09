@@ -3,6 +3,9 @@
 import { useState } from "react"
 import Link from "next/link"
 import { resetPasswordWithToken } from "@/app/actions/password-reset"
+import { Icon } from "@/components/ui/Icon"
+import { Input } from "@/components/ui/Input"
+import { Button } from "@/components/ui/Button"
 
 export default function ResetPasswordForm({ token }: { token: string }) {
   const [password, setPassword] = useState("")
@@ -23,51 +26,45 @@ export default function ResetPasswordForm({ token }: { token: string }) {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(150deg, #0A3020 0%, #082818 55%, #041510 100%)" }}>
-      <div className="bg-white rounded-2xl p-12 w-full max-w-md shadow-2xl">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl" style={{ background: "linear-gradient(135deg, #0C3D26, #1B5E3B)" }}>🔑</div>
-          <h1 className="text-2xl font-semibold mb-1" style={{ color: "#0C3D26" }}>Set a new password</h1>
-          <p className="text-xs tracking-widest" style={{ color: "#9CA3AF" }}>NMS ONLINE LEARNING PLATFORM</p>
+    <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--gradient-header)" }}>
+      <div style={{ background: "#fff", borderRadius: "var(--radius-lg)", padding: 48, width: "100%", maxWidth: 400, boxShadow: "var(--shadow-login-card)" }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ width: 56, height: 56, borderRadius: "var(--radius-xl)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", background: "var(--green-700)" }}>
+            <Icon name="key" size={26} color="#fff" />
+          </div>
+          <h1 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "var(--green-700)", margin: "0 0 4px" }}>Set a new password</h1>
+          <p style={{ fontSize: 11, letterSpacing: "0.14em", color: "var(--ink-400)", margin: 0, textTransform: "uppercase" }}>NMS Online Learning Platform</p>
         </div>
 
         {!token ? (
           <div>
-            <p className="text-sm px-4 py-3 rounded-lg" style={{ background: "#FEF2F2", color: "#B91C1C", lineHeight: 1.6 }}>
+            <p style={{ fontSize: 13, padding: "10px 16px", borderRadius: "var(--radius-md)", background: "var(--error-100)", color: "var(--error-700)", lineHeight: 1.6 }}>
               This reset link is invalid or incomplete. Please request a new one.
             </p>
-            <p className="text-center mt-6">
-              <Link href="/forgot-password" className="text-sm" style={{ color: "#0C3D26", fontWeight: 600 }}>Request a new link</Link>
+            <p style={{ textAlign: "center", marginTop: 24 }}>
+              <Link href="/forgot-password" style={{ fontSize: 13, color: "var(--green-700)", fontWeight: 600, textDecoration: "none" }}>Request a new link</Link>
             </p>
           </div>
         ) : done ? (
           <div>
-            <p className="text-sm px-4 py-3 rounded-lg" style={{ background: "#F0FBF4", color: "#166534", lineHeight: 1.6 }}>
-              ✓ Your password has been updated. You can now sign in with your new password.
+            <p style={{ fontSize: 13, padding: "10px 16px", borderRadius: "var(--radius-md)", background: "var(--success-100)", color: "var(--success-700)", lineHeight: 1.6 }}>
+              Your password has been updated. You can now sign in with your new password.
             </p>
-            <p className="text-center mt-6">
-              <Link href="/login" className="text-sm" style={{ color: "#0C3D26", fontWeight: 600 }}>Sign in →</Link>
+            <p style={{ textAlign: "center", marginTop: 24 }}>
+              <Link href="/login" style={{ fontSize: 13, color: "var(--green-700)", fontWeight: 600, textDecoration: "none" }}>Sign in →</Link>
             </p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div>
-              <label className="block text-xs font-semibold mb-1.5 tracking-wide" style={{ color: "#6B7280" }}>NEW PASSWORD</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8}
-                className="w-full px-4 py-3 rounded-lg border text-sm outline-none" style={{ borderColor: "#E2D9CC", background: "#FAFAF8" }} />
-              <p className="text-xs mt-1" style={{ color: "#9CA3AF" }}>At least 8 characters.</p>
+              <Input label="NEW PASSWORD" type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} style={{ padding: "11px 14px" }} />
+              <p style={{ fontSize: 11, color: "var(--ink-400)", marginTop: 4 }}>At least 8 characters.</p>
             </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1.5 tracking-wide" style={{ color: "#6B7280" }}>CONFIRM NEW PASSWORD</label>
-              <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required minLength={8}
-                className="w-full px-4 py-3 rounded-lg border text-sm outline-none" style={{ borderColor: "#E2D9CC", background: "#FAFAF8" }} />
-            </div>
-            {error && <p className="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg">{error}</p>}
-            <button type="submit" disabled={loading}
-              className="w-full py-3 rounded-lg text-white font-semibold text-sm mt-2 transition-opacity"
-              style={{ background: "linear-gradient(135deg, #0C3D26, #1B5E3B)", opacity: loading ? 0.6 : 1 }}>
-              {loading ? "Saving…" : "Set New Password →"}
-            </button>
+            <Input label="CONFIRM NEW PASSWORD" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required minLength={8} style={{ padding: "11px 14px" }} />
+            {error && <p style={{ fontSize: 13, color: "var(--error-700)", background: "var(--error-100)", padding: "8px 16px", borderRadius: "var(--radius-sm)", margin: 0 }}>{error}</p>}
+            <Button type="submit" disabled={loading} style={{ width: "100%", padding: 12 }}>
+              {loading ? "Saving…" : "Set New Password"}
+            </Button>
           </form>
         )}
       </div>
