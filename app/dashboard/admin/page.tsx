@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import AdminView from "./AdminView"
+import { Navbar } from "@/components/ui/Navbar"
+import { Avatar } from "@/components/ui/Avatar"
+import { Button } from "@/components/ui/Button"
 
 export default async function AdminPage() {
   const session = await auth()
@@ -60,28 +63,20 @@ export default async function AdminPage() {
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-      <header className="flex items-center justify-between px-8" style={{ background: "#0C3D26", height: 64, flexShrink: 0 }}>
-        <div className="flex items-center gap-3">
-          <span className="text-xl">🏥</span>
-          <div>
-            <div className="text-white font-semibold" style={{ fontFamily: "serif", fontSize: 17, lineHeight: 1.2 }}>Northern Medical School</div>
-            <div style={{ color: "#7DB899", fontSize: 10, letterSpacing: "0.14em" }}>SCHOOL ADMINISTRATION</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <div className="text-white font-medium" style={{ fontSize: 13 }}>{session.user.name}</div>
-            <div style={{ color: "#7DB899", fontSize: 11 }}>{session.user.role === "IT_ADMIN" ? "IT Admin" : "School Admin"}</div>
-          </div>
-          <div className="flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0" style={{ width: 34, height: 34, background: "#2D4A1A" }}>
-            {(session.user.name ?? "A")[0]}
-          </div>
-          <Link href="/profile" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", borderRadius: 20, padding: "4px 12px", fontSize: 11, textDecoration: "none" }}>Profile</Link>
-          <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }) }}>
-            <button type="submit" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", border: "none", borderRadius: 20, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>Sign out</button>
-          </form>
-        </div>
-      </header>
+      <Navbar
+        subtitle="SCHOOL ADMINISTRATION"
+        userName={session.user.name}
+        userSub={session.user.role === "IT_ADMIN" ? "IT Admin" : "School Admin"}
+        right={
+          <>
+            <Avatar name={session.user.name} bg="var(--violet-700)" />
+            <Link href="/profile" style={{ textDecoration: "none" }}><Button variant="ghostDark" size="sm">Profile</Button></Link>
+            <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }) }}>
+              <Button type="submit" variant="ghostDark" size="sm">Sign out</Button>
+            </form>
+          </>
+        }
+      />
 
       <AdminView
         users={users.map(u => ({

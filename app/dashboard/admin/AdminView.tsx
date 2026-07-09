@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation"
 import { createUser, updateUserRole, toggleUserActive, resetUserPassword, updateStudentIdNumber, createGroup, deleteGroup, assignStudentToGroup, removeStudentFromGroup, assignModuleToFaculty, removeModuleFromFaculty } from "@/app/actions/admin"
 import { reviewGrade, publishGrade } from "@/app/actions/assessments"
 import type { Role } from "@prisma/client"
+import { Icon } from "@/components/ui/Icon"
+import { Button } from "@/components/ui/Button"
+import { Tabs } from "@/components/ui/Tabs"
+import { StatCard } from "@/components/ui/StatCard"
+import { Table, TableRow } from "@/components/ui/Table"
+import { Badge, type BadgeRole } from "@/components/ui/Badge"
+import { Modal, FlashMessage } from "@/components/ui/Modal"
 
 type GradeQueueItem = {
   gradeId: string; status: string; mark: number | null; feedback: string | null
@@ -21,16 +28,12 @@ type Tutor  = { id: string; name: string }
 
 const ROLES: Role[] = ["STUDENT", "TUTOR", "FACULTY", "SCHOOL_ADMIN", "IT_ADMIN"]
 const ROLE_LABEL: Record<Role, string> = { STUDENT: "Student", TUTOR: "Tutor", FACULTY: "Faculty", SCHOOL_ADMIN: "School Admin", IT_ADMIN: "IT Admin" }
-const ROLE_COLOR: Record<Role, { bg: string; color: string }> = {
-  STUDENT:      { bg: "#E3F0E9", color: "#0C3D26" },
-  TUTOR:        { bg: "#FEF3E7", color: "#92400E" },
-  FACULTY:      { bg: "#EEF2F8", color: "#1A3A6B" },
-  SCHOOL_ADMIN: { bg: "#F0F0FF", color: "#2D1A6B" },
-  IT_ADMIN:     { bg: "#F3F4F6", color: "#374151" },
-}
 
 const EMPTY_USER  = { name: "", email: "", password: "", role: "STUDENT" as Role, studentIdNumber: "" }
 const EMPTY_GROUP = { name: "", tutorId: "" }
+
+const label: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "var(--ink-500)", display: "block", marginBottom: 5, letterSpacing: "0.08em" }
+const inputStyle: React.CSSProperties = { width: "100%", padding: "9px 12px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", fontSize: 14, outline: "none", boxSizing: "border-box" }
 
 export default function AdminView({ users, groups, modules, tutors, facultyAssignments, stats, gradeQueue }: {
   users: User[]; groups: Group[]; modules: Module[]; tutors: Tutor[]
@@ -61,8 +64,8 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
     setSaving(true)
     const res = await createUser(userForm)
     setSaving(false)
-    if ("error" in res) { flash("⚠ " + res.error); return }
-    flash("✓ User created — " + userForm.email)
+    if ("error" in res) { flash("Error: " + res.error); return }
+    flash("User created — " + userForm.email)
     setUserForm(EMPTY_USER); setShowNewUser(false); refresh()
   }
 
@@ -79,7 +82,7 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
     if (!editingPw || !editingPw.pw) return
     setSaving(true)
     await resetUserPassword(editingPw.userId, editingPw.pw)
-    setSaving(false); setEditingPw(null); flash("✓ Password updated")
+    setSaving(false); setEditingPw(null); flash("Password updated")
   }
 
   async function handleSetSid() {
@@ -87,8 +90,8 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
     setSaving(true)
     const res = await updateStudentIdNumber(editingSid.userId, editingSid.sid)
     setSaving(false)
-    if ("error" in res) { flash("⚠ " + res.error); return }
-    setEditingSid(null); flash("✓ Student ID updated"); refresh()
+    if ("error" in res) { flash("Error: " + res.error); return }
+    setEditingSid(null); flash("Student ID updated"); refresh()
   }
 
   async function handleModuleToggle(facultyId: string, moduleId: string, currentlyAssigned: boolean) {
@@ -120,8 +123,8 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
     setSaving(true)
     const res = await publishGrade(g.gradeId)
     setSaving(false)
-    if ("error" in res) { flash("⚠ " + res.error); return }
-    flash(`✓ Grade published to ${g.studentName}`); refresh()
+    if ("error" in res) { flash("Error: " + res.error); return }
+    flash(`Grade published to ${g.studentName}`); refresh()
   }
 
   async function handleAdminReview(g: GradeQueueItem, decision: "approve" | "return") {
@@ -129,75 +132,54 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
     setSaving(true)
     const res = await reviewGrade(g.gradeId, g.moduleId, decision, note)
     setSaving(false)
-    if ("error" in res) { flash("⚠ " + res.error); return }
+    if ("error" in res) { flash("Error: " + res.error); return }
     setReviewNoteFor(null)
-    flash(decision === "approve" ? "✓ Grade approved — ready to publish" : "✓ Returned to the marker"); refresh()
+    flash(decision === "approve" ? "Grade approved — ready to publish" : "Returned to the marker"); refresh()
   }
 
   const filtered = roleFilter === "All" ? users : users.filter(u => u.role === roleFilter)
   const students = users.filter(u => u.role === "STUDENT")
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#F7F3ED" }}>
-      {msg && (
-        <div style={{ position: "fixed", top: 76, right: 24, background: msg.startsWith("⚠") ? "#FEF2F2" : "#F0FBF4", border: `1px solid ${msg.startsWith("⚠") ? "#FCA5A5" : "#86C49B"}`, borderRadius: 8, padding: "10px 18px", fontSize: 13, fontWeight: 500, color: msg.startsWith("⚠") ? "#B91C1C" : "#166534", zIndex: 50, boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }}>
-          {msg}
-        </div>
-      )}
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--surface-subtle)" }}>
+      {msg && <FlashMessage message={msg} />}
 
-      <div style={{ background: "#fff", borderBottom: "1px solid #E2D9CC", display: "flex", paddingLeft: 28, flexShrink: 0 }}>
-        {(["overview", "users", "groups", "grading"] as const).map(t => (
-          <button key={t} onClick={() => { setTab(t); setModuleManageId(null) }}
-            style={{ padding: "14px 22px", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: tab === t ? 600 : 400, color: tab === t ? (t === "grading" && gradeQueue.length > 0 ? "#B47E2A" : "#0C3D26") : "#6B7280", background: "none", borderBottom: tab === t ? `2px solid ${t === "grading" && gradeQueue.length > 0 ? "#B47E2A" : "#0C3D26"}` : "2px solid transparent", textTransform: "capitalize" }}>
-            {t === "overview" ? "📊 Overview" : t === "users" ? `👥 Users (${users.length})` : t === "groups" ? `🏫 Groups (${groups.length})` : `⚖️ Grading${gradeQueue.length > 0 ? ` (${gradeQueue.length})` : ""}`}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={[
+          { key: "overview", icon: "chart-bar", label: "Overview" },
+          { key: "users", icon: "users", label: `Users (${users.length})` },
+          { key: "groups", icon: "chalkboard-teacher", label: `Groups (${groups.length})` },
+          { key: "grading", icon: "scales", label: `Grading${gradeQueue.length > 0 ? ` (${gradeQueue.length})` : ""}` },
+        ]}
+        active={tab}
+        onChange={k => { setTab(k as typeof tab); setModuleManageId(null) }}
+        activeColor={tab === "grading" && gradeQueue.length > 0 ? "var(--gold-700)" : "var(--green-700)"}
+      />
 
       <div style={{ flex: 1, overflowY: "auto", padding: "28px 32px" }}>
 
         {/* OVERVIEW */}
         {tab === "overview" && (
           <div>
-            <h1 style={{ fontFamily: "serif", fontSize: 22, color: "#0C3D26", margin: "0 0 20px", fontWeight: 600 }}>School Overview</h1>
+            <h1 style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--green-700)", margin: "0 0 20px", fontWeight: 600 }}>School Overview</h1>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 28 }}>
-              {[{ icon: "👩‍🎓", value: stats.students, label: "Students" }, { icon: "🩺", value: stats.faculty, label: "Faculty" }, { icon: "👨‍🏫", value: stats.tutors, label: "Tutors" }, { icon: "⚙️", value: stats.admins, label: "Admins" }].map(s => (
-                <div key={s.label} style={{ background: "#fff", borderRadius: 12, padding: "18px 20px", border: "1px solid #E2D9CC", display: "flex", alignItems: "center", gap: 14 }}>
-                  <span style={{ fontSize: 26 }}>{s.icon}</span>
-                  <div>
-                    <div style={{ fontSize: 28, fontWeight: 700, color: "#0C3D26", fontFamily: "serif", lineHeight: 1 }}>{s.value}</div>
-                    <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>{s.label}</div>
-                  </div>
-                </div>
+              <StatCard icon="student" value={stats.students} label="Students" />
+              <StatCard icon="stethoscope" value={stats.faculty} label="Faculty" />
+              <StatCard icon="chalkboard-teacher" value={stats.tutors} label="Tutors" />
+              <StatCard icon="gear-six" value={stats.admins} label="Admins" />
+            </div>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--ink-900)", margin: "0 0 14px", fontWeight: 600 }}>Year 1 Curriculum Status</h2>
+            <Table columns={["Module", "Code", "Lessons", "Quiz Questions", "Status"]}>
+              {modules.map((m, i) => (
+                <TableRow key={m.id} index={i}>
+                  <td style={{ padding: "10px 16px", color: "var(--ink-900)", fontWeight: 500 }}>{m.title}</td>
+                  <td style={{ padding: "10px 16px", color: "var(--ink-500)", fontSize: 12 }}>{m.code}</td>
+                  <td style={{ padding: "10px 16px", fontWeight: 600, color: m.lessons > 0 ? "var(--green-700)" : "var(--ink-400)" }}>{m.lessons}</td>
+                  <td style={{ padding: "10px 16px", fontWeight: 600, color: m.questions > 0 ? "var(--green-700)" : "var(--ink-400)" }}>{m.questions}</td>
+                  <td style={{ padding: "10px 16px" }}><Badge status={m.isPublished ? "published" : "draft"}>{m.isPublished ? "Published" : "Draft"}</Badge></td>
+                </TableRow>
               ))}
-            </div>
-            <h2 style={{ fontFamily: "serif", fontSize: 18, color: "#1A1A1A", margin: "0 0 14px", fontWeight: 600 }}>Year 1 Curriculum Status</h2>
-            <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E2D9CC", overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                <thead>
-                  <tr style={{ background: "#0C3D26" }}>
-                    {["Module", "Code", "Lessons", "Quiz Questions", "Status"].map(h => (
-                      <th key={h} style={{ padding: "9px 16px", textAlign: "left", color: "#fff", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {modules.map((m, i) => (
-                    <tr key={m.id} style={{ background: i % 2 === 0 ? "#fff" : "#FAFAF8", borderBottom: "1px solid #F0EAE0" }}>
-                      <td style={{ padding: "10px 16px", color: "#1A1A1A", fontWeight: 500 }}>{m.title}</td>
-                      <td style={{ padding: "10px 16px", color: "#6B7280", fontSize: 12 }}>{m.code}</td>
-                      <td style={{ padding: "10px 16px", fontWeight: 600, color: m.lessons > 0 ? "#0C3D26" : "#9CA3AF" }}>{m.lessons}</td>
-                      <td style={{ padding: "10px 16px", fontWeight: 600, color: m.questions > 0 ? "#0C3D26" : "#9CA3AF" }}>{m.questions}</td>
-                      <td style={{ padding: "10px 16px" }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 100, background: m.isPublished ? "#E3F0E9" : "#F3F4F6", color: m.isPublished ? "#0C3D26" : "#9CA3AF" }}>
-                          {m.isPublished ? "PUBLISHED" : "DRAFT"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            </Table>
           </div>
         )}
 
@@ -205,50 +187,49 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
         {tab === "users" && (
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-              <h1 style={{ fontFamily: "serif", fontSize: 22, color: "#0C3D26", margin: 0, fontWeight: 600 }}>Users</h1>
-              <button onClick={() => { setShowNewUser(true); setUserForm(EMPTY_USER) }}
-                style={{ background: "#0C3D26", color: "#fff", border: "none", borderRadius: 8, padding: "9px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                + New User
-              </button>
+              <h1 style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--green-700)", margin: 0, fontWeight: 600 }}>Users</h1>
+              <Button onClick={() => { setShowNewUser(true); setUserForm(EMPTY_USER) }}>
+                <Icon name="plus" size={14} /> New User
+              </Button>
             </div>
 
             {showNewUser && (
-              <div style={{ background: "#fff", borderRadius: 12, padding: "22px 24px", border: "1.5px solid #0C3D26", marginBottom: 20 }}>
-                <h3 style={{ fontFamily: "serif", fontSize: 17, color: "#0C3D26", margin: "0 0 16px", fontWeight: 600 }}>Create New User</h3>
+              <div style={{ background: "#fff", borderRadius: "var(--radius-xl)", padding: "22px 24px", border: "1.5px solid var(--green-700)", marginBottom: 20 }}>
+                <h3 style={{ fontFamily: "var(--font-display)", fontSize: 17, color: "var(--green-700)", margin: "0 0 16px", fontWeight: 600 }}>Create New User</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", display: "block", marginBottom: 5, letterSpacing: "0.08em" }}>FULL NAME</label>
-                    <input value={userForm.name} onChange={e => setUserForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Dr. Aye Aye" style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 14, outline: "none" }} />
+                    <label style={label}>FULL NAME</label>
+                    <input value={userForm.name} onChange={e => setUserForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Dr. Aye Aye" style={inputStyle} />
                   </div>
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", display: "block", marginBottom: 5, letterSpacing: "0.08em" }}>EMAIL</label>
-                    <input value={userForm.email} onChange={e => setUserForm(p => ({ ...p, email: e.target.value }))} placeholder="e.g. dr.ayeaye@nsm.edu" type="email" style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 14, outline: "none" }} />
+                    <label style={label}>EMAIL</label>
+                    <input value={userForm.email} onChange={e => setUserForm(p => ({ ...p, email: e.target.value }))} placeholder="e.g. dr.ayeaye@nsm.edu" type="email" style={inputStyle} />
                   </div>
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", display: "block", marginBottom: 5, letterSpacing: "0.08em" }}>ROLE</label>
-                    <select value={userForm.role} onChange={e => setUserForm(p => ({ ...p, role: e.target.value as Role }))} style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 14, outline: "none", background: "#fff" }}>
+                    <label style={label}>ROLE</label>
+                    <select value={userForm.role} onChange={e => setUserForm(p => ({ ...p, role: e.target.value as Role }))} style={{ ...inputStyle, cursor: "pointer", background: "#fff" }}>
                       {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", display: "block", marginBottom: 5, letterSpacing: "0.08em" }}>INITIAL PASSWORD</label>
-                    <input value={userForm.password} onChange={e => setUserForm(p => ({ ...p, password: e.target.value }))} placeholder="Share this with the user" type="text" style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 14, outline: "none" }} />
+                    <label style={label}>INITIAL PASSWORD</label>
+                    <input value={userForm.password} onChange={e => setUserForm(p => ({ ...p, password: e.target.value }))} placeholder="Share this with the user" type="text" style={inputStyle} />
                   </div>
                   {userForm.role === "STUDENT" && (
                     <div>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", display: "block", marginBottom: 5, letterSpacing: "0.08em" }}>STUDENT ID / ROLL NUMBER (OPTIONAL)</label>
-                      <input value={userForm.studentIdNumber} onChange={e => setUserForm(p => ({ ...p, studentIdNumber: e.target.value }))} placeholder="e.g. NMS-2026-001 — matches paper register" style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 14, outline: "none" }} />
+                      <label style={label}>STUDENT ID / ROLL NUMBER (OPTIONAL)</label>
+                      <input value={userForm.studentIdNumber} onChange={e => setUserForm(p => ({ ...p, studentIdNumber: e.target.value }))} placeholder="e.g. NMS-2026-001 — matches paper register" style={inputStyle} />
                     </div>
                   )}
                 </div>
                 {userForm.role === "FACULTY" && (
-                  <p style={{ fontSize: 12, color: "#B47E2A", margin: "0 0 12px", background: "#FBF4E3", padding: "8px 12px", borderRadius: 8 }}>
-                    💡 After creating this faculty account, use the Modules button in the user table to assign which modules they can manage.
+                  <p style={{ fontSize: 12, color: "var(--gold-700)", margin: "0 0 12px", background: "var(--gold-100)", padding: "8px 12px", borderRadius: "var(--radius-md)" }}>
+                    After creating this faculty account, use the Modules button in the user table to assign which modules they can manage.
                   </p>
                 )}
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => setShowNewUser(false)} style={{ background: "#F3F4F6", color: "#374151", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, cursor: "pointer" }}>Cancel</button>
-                  <button onClick={handleCreateUser} disabled={saving} style={{ background: saving ? "#E5E7EB" : "#0C3D26", color: saving ? "#9CA3AF" : "#fff", border: "none", borderRadius: 8, padding: "9px 22px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{saving ? "Creating…" : "Create User"}</button>
+                  <Button variant="secondary" onClick={() => setShowNewUser(false)}>Cancel</Button>
+                  <Button onClick={handleCreateUser} disabled={saving}>{saving ? "Creating…" : "Create User"}</Button>
                 </div>
               </div>
             )}
@@ -256,148 +237,122 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
             <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
               {(["All", ...ROLES] as const).map(r => (
                 <button key={r} onClick={() => setRoleFilter(r as any)}
-                  style={{ padding: "5px 14px", borderRadius: 20, border: `1px solid ${roleFilter === r ? "#0C3D26" : "#E2D9CC"}`, background: roleFilter === r ? "#0C3D26" : "#fff", color: roleFilter === r ? "#fff" : "#374151", fontSize: 12, fontWeight: roleFilter === r ? 600 : 400, cursor: "pointer" }}>
+                  style={{ padding: "5px 14px", borderRadius: "var(--radius-pill)", border: `1px solid ${roleFilter === r ? "var(--green-700)" : "var(--border)"}`, background: roleFilter === r ? "var(--green-700)" : "#fff", color: roleFilter === r ? "#fff" : "var(--ink-700)", fontSize: 12, fontWeight: roleFilter === r ? 600 : 400, cursor: "pointer" }}>
                   {r === "All" ? "All" : ROLE_LABEL[r as Role]}
                 </button>
               ))}
             </div>
 
-            <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E2D9CC", overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                <thead>
-                  <tr style={{ background: "#0C3D26" }}>
-                    {["Name", "Email", "Role", "Group / Modules", "Status", "Actions"].map(h => (
-                      <th key={h} style={{ padding: "9px 16px", textAlign: "left", color: "#fff", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((u, i) => (
-                    <Fragment key={u.id}>
-                      <tr style={{ background: i % 2 === 0 ? "#fff" : "#FAFAF8", borderBottom: moduleManageId === u.id ? "none" : "1px solid #F0EAE0", opacity: u.isActive ? 1 : 0.55 }}>
-                        <td style={{ padding: "10px 16px", fontWeight: 500, color: "#1A1A1A" }}>
-                          {u.name || "—"}
-                          {u.role === "STUDENT" && u.studentIdNumber && (
-                            <div style={{ fontSize: 10.5, color: "#B47E2A", fontWeight: 600, marginTop: 2 }}>ID: {u.studentIdNumber}</div>
-                          )}
-                        </td>
-                        <td style={{ padding: "10px 16px", color: "#6B7280", fontSize: 12 }}>{u.email}</td>
-                        <td style={{ padding: "10px 16px" }}>
-                          <select value={u.role} onChange={e => handleRoleChange(u.id, e.target.value as Role)}
-                            style={{ padding: "3px 8px", borderRadius: 6, border: "1px solid #E2D9CC", fontSize: 12, background: ROLE_COLOR[u.role].bg, color: ROLE_COLOR[u.role].color, fontWeight: 600, cursor: "pointer" }}>
-                            {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
-                          </select>
-                        </td>
-                        <td style={{ padding: "10px 16px", fontSize: 12, color: "#6B7280" }}>
-                          {u.role === "FACULTY" ? (
-                            <span style={{ color: "#1A3A6B" }}>
-                              {(facultyAssignments[u.id] ?? []).length} module{(facultyAssignments[u.id] ?? []).length !== 1 ? "s" : ""} assigned
-                            </span>
-                          ) : (
-                            <span style={{ color: u.group ? "#0C3D26" : "#C5BAB0" }}>
-                              {u.group?.name ?? (u.role === "STUDENT" ? "Unassigned" : "—")}
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ padding: "10px 16px" }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 100, background: u.isActive ? "#E3F0E9" : "#F3F4F6", color: u.isActive ? "#0C3D26" : "#9CA3AF" }}>
-                            {u.isActive ? "Active" : "Inactive"}
-                          </span>
-                        </td>
-                        <td style={{ padding: "10px 16px" }}>
-                          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                            {u.role === "FACULTY" && (
-                              <button onClick={() => setModuleManageId(moduleManageId === u.id ? null : u.id)}
-                                style={{ fontSize: 11, padding: "3px 10px", borderRadius: 6, border: `1px solid ${moduleManageId === u.id ? "#0C3D26" : "#E2D9CC"}`, background: moduleManageId === u.id ? "#E3F0E9" : "#fff", cursor: "pointer", color: "#1A3A6B", fontWeight: 500 }}>
-                                📚 Modules
-                              </button>
-                            )}
-                            {u.role === "STUDENT" && (
-                              <button onClick={() => setEditingSid({ userId: u.id, name: u.name, sid: u.studentIdNumber ?? "" })}
-                                style={{ fontSize: 11, padding: "3px 10px", borderRadius: 6, border: "1px solid #E2D9CC", background: "#fff", cursor: "pointer", color: "#B47E2A", fontWeight: 500 }}>
-                                🆔 Set ID
-                              </button>
-                            )}
-                            <button onClick={() => setEditingPw({ userId: u.id, pw: "" })}
-                              style={{ fontSize: 11, padding: "3px 10px", borderRadius: 6, border: "1px solid #E2D9CC", background: "#fff", cursor: "pointer", color: "#374151" }}>
-                              Reset PW
-                            </button>
-                            <button onClick={() => handleToggleActive(u.id, u.isActive)}
-                              style={{ fontSize: 11, padding: "3px 10px", borderRadius: 6, border: "none", background: u.isActive ? "#FEE2E2" : "#E3F0E9", color: u.isActive ? "#B91C1C" : "#0C3D26", cursor: "pointer", fontWeight: 500 }}>
-                              {u.isActive ? "Deactivate" : "Reactivate"}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-
-                      {/* Module assignment panel */}
-                      {u.role === "FACULTY" && moduleManageId === u.id && (
-                        <tr>
-                          <td colSpan={6} style={{ padding: "14px 20px 16px", background: "#F0F7FF", borderBottom: "1px solid #E2D9CC" }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "#1A3A6B", letterSpacing: "0.08em", marginBottom: 10 }}>
-                              MODULE ASSIGNMENTS — {u.name}
-                            </div>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                              {modules.map(m => {
-                                const assigned = (facultyAssignments[u.id] ?? []).includes(m.id)
-                                return (
-                                  <label key={m.id}
-                                    style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", padding: "6px 12px", borderRadius: 8, background: assigned ? "#E3F0E9" : "#fff", border: `1.5px solid ${assigned ? "#86BFA4" : "#E2D9CC"}`, transition: "all 0.1s" }}>
-                                    <input type="checkbox" checked={assigned}
-                                      onChange={() => handleModuleToggle(u.id, m.id, assigned)}
-                                      style={{ accentColor: "#0C3D26", width: 14, height: 14, cursor: "pointer" }} />
-                                    <span style={{ fontSize: 12, fontWeight: assigned ? 600 : 400, color: assigned ? "#0C3D26" : "#374151" }}>
-                                      {m.code}: {m.title}
-                                    </span>
-                                  </label>
-                                )
-                              })}
-                            </div>
-                            <p style={{ fontSize: 11, color: "#6B7280", margin: "10px 0 0" }}>Changes take effect immediately. Faculty can only manage content for assigned modules.</p>
-                          </td>
-                        </tr>
+            <Table columns={["Name", "Email", "Role", "Group / Modules", "Status", "Actions"]}>
+              {filtered.map((u, i) => (
+                <Fragment key={u.id}>
+                  <TableRow index={i} style={{ opacity: u.isActive ? 1 : 0.55, ...(moduleManageId === u.id ? { borderBottom: "none" } : {}) }}>
+                    <td style={{ padding: "10px 16px", fontWeight: 500, color: "var(--ink-900)" }}>
+                      {u.name || "—"}
+                      {u.role === "STUDENT" && u.studentIdNumber && (
+                        <div style={{ fontSize: 10.5, color: "var(--gold-700)", fontWeight: 600, marginTop: 2 }}>ID: {u.studentIdNumber}</div>
                       )}
-                    </Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                    </td>
+                    <td style={{ padding: "10px 16px", color: "var(--ink-500)", fontSize: 12 }}>{u.email}</td>
+                    <td style={{ padding: "10px 16px" }}>
+                      <select value={u.role} onChange={e => handleRoleChange(u.id, e.target.value as Role)}
+                        style={{ padding: "3px 8px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                        {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                      </select>
+                      <div style={{ marginTop: 4 }}><Badge role={u.role as BadgeRole}>{ROLE_LABEL[u.role]}</Badge></div>
+                    </td>
+                    <td style={{ padding: "10px 16px", fontSize: 12, color: "var(--ink-500)" }}>
+                      {u.role === "FACULTY" ? (
+                        <span style={{ color: "var(--blue-700)" }}>
+                          {(facultyAssignments[u.id] ?? []).length} module{(facultyAssignments[u.id] ?? []).length !== 1 ? "s" : ""} assigned
+                        </span>
+                      ) : (
+                        <span style={{ color: u.group ? "var(--green-700)" : "var(--ink-400)" }}>
+                          {u.group?.name ?? (u.role === "STUDENT" ? "Unassigned" : "—")}
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ padding: "10px 16px" }}>
+                      <Badge status={u.isActive ? "active" : "inactive"}>{u.isActive ? "Active" : "Inactive"}</Badge>
+                    </td>
+                    <td style={{ padding: "10px 16px" }}>
+                      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                        {u.role === "FACULTY" && (
+                          <Button size="sm" variant={moduleManageId === u.id ? "outline" : "secondary"} onClick={() => setModuleManageId(moduleManageId === u.id ? null : u.id)}>
+                            Modules
+                          </Button>
+                        )}
+                        {u.role === "STUDENT" && (
+                          <Button size="sm" variant="secondary" onClick={() => setEditingSid({ userId: u.id, name: u.name, sid: u.studentIdNumber ?? "" })}>
+                            Set ID
+                          </Button>
+                        )}
+                        <Button size="sm" variant="secondary" onClick={() => setEditingPw({ userId: u.id, pw: "" })}>
+                          Reset PW
+                        </Button>
+                        <Button size="sm" variant={u.isActive ? "danger" : "secondary"} onClick={() => handleToggleActive(u.id, u.isActive)}>
+                          {u.isActive ? "Deactivate" : "Reactivate"}
+                        </Button>
+                      </div>
+                    </td>
+                  </TableRow>
+
+                  {/* Module assignment panel */}
+                  {u.role === "FACULTY" && moduleManageId === u.id && (
+                    <tr>
+                      <td colSpan={6} style={{ padding: "14px 20px 16px", background: "var(--blue-100)", borderBottom: "1px solid var(--border)" }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--blue-700)", letterSpacing: "0.08em", marginBottom: 10 }}>
+                          MODULE ASSIGNMENTS — {u.name}
+                        </div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          {modules.map(m => {
+                            const assigned = (facultyAssignments[u.id] ?? []).includes(m.id)
+                            return (
+                              <label key={m.id}
+                                style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer", padding: "6px 12px", borderRadius: "var(--radius-md)", background: assigned ? "var(--green-100)" : "#fff", border: `1.5px solid ${assigned ? "var(--green-500)" : "var(--border)"}` }}>
+                                <input type="checkbox" checked={assigned}
+                                  onChange={() => handleModuleToggle(u.id, m.id, assigned)}
+                                  style={{ accentColor: "var(--green-700)", width: 14, height: 14, cursor: "pointer" }} />
+                                <span style={{ fontSize: 12, fontWeight: assigned ? 600 : 400, color: assigned ? "var(--green-700)" : "var(--ink-700)" }}>
+                                  {m.code}: {m.title}
+                                </span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                        <p style={{ fontSize: 11, color: "var(--ink-500)", margin: "10px 0 0" }}>Changes take effect immediately. Faculty can only manage content for assigned modules.</p>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))}
+            </Table>
 
             {editingSid && (
-              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 40 }}>
-                <div style={{ background: "#fff", borderRadius: 14, padding: "28px 32px", width: 380, boxShadow: "0 24px 60px rgba(0,0,0,0.3)" }}>
-                  <h3 style={{ fontFamily: "serif", fontSize: 18, color: "#0C3D26", margin: "0 0 6px", fontWeight: 600 }}>Student ID / Roll Number</h3>
-                  <p style={{ fontSize: 12, color: "#6B7280", margin: "0 0 16px" }}>{editingSid.name} — should match the school&apos;s paper registration number. Leave blank to remove.</p>
-                  <input value={editingSid.sid} onChange={e => setEditingSid(p => p ? { ...p, sid: e.target.value } : null)}
-                    placeholder="e.g. NMS-2026-001" type="text"
-                    style={{ width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 14, outline: "none", marginBottom: 14 }} />
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => setEditingSid(null)} style={{ flex: 1, padding: "9px", background: "#F3F4F6", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13 }}>Cancel</button>
-                    <button onClick={handleSetSid} disabled={saving}
-                      style={{ flex: 1, padding: "9px", background: saving ? "#E5E7EB" : "#0C3D26", color: saving ? "#9CA3AF" : "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
-                      {saving ? "Saving…" : "Save"}
-                    </button>
-                  </div>
+              <Modal width={380} onClose={() => setEditingSid(null)}>
+                <h3 style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--green-700)", margin: "0 0 6px", fontWeight: 600 }}>Student ID / Roll Number</h3>
+                <p style={{ fontSize: 12, color: "var(--ink-500)", margin: "0 0 16px" }}>{editingSid.name} — should match the school&apos;s paper registration number. Leave blank to remove.</p>
+                <input value={editingSid.sid} onChange={e => setEditingSid(p => p ? { ...p, sid: e.target.value } : null)}
+                  placeholder="e.g. NMS-2026-001" type="text"
+                  style={{ ...inputStyle, marginBottom: 14 }} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Button variant="secondary" style={{ flex: 1, justifyContent: "center" }} onClick={() => setEditingSid(null)}>Cancel</Button>
+                  <Button style={{ flex: 1, justifyContent: "center" }} onClick={handleSetSid} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
                 </div>
-              </div>
+              </Modal>
             )}
 
             {editingPw && (
-              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 40 }}>
-                <div style={{ background: "#fff", borderRadius: 14, padding: "28px 32px", width: 360, boxShadow: "0 24px 60px rgba(0,0,0,0.3)" }}>
-                  <h3 style={{ fontFamily: "serif", fontSize: 18, color: "#0C3D26", margin: "0 0 16px", fontWeight: 600 }}>Reset Password</h3>
-                  <input value={editingPw.pw} onChange={e => setEditingPw(p => p ? { ...p, pw: e.target.value } : null)}
-                    placeholder="New password" type="text"
-                    style={{ width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 14, outline: "none", marginBottom: 14 }} />
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => setEditingPw(null)} style={{ flex: 1, padding: "9px", background: "#F3F4F6", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13 }}>Cancel</button>
-                    <button onClick={handleResetPw} disabled={saving || !editingPw.pw}
-                      style={{ flex: 1, padding: "9px", background: saving || !editingPw.pw ? "#E5E7EB" : "#0C3D26", color: saving || !editingPw.pw ? "#9CA3AF" : "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
-                      {saving ? "Saving…" : "Save"}
-                    </button>
-                  </div>
+              <Modal width={360} onClose={() => setEditingPw(null)}>
+                <h3 style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--green-700)", margin: "0 0 16px", fontWeight: 600 }}>Reset Password</h3>
+                <input value={editingPw.pw} onChange={e => setEditingPw(p => p ? { ...p, pw: e.target.value } : null)}
+                  placeholder="New password" type="text"
+                  style={{ ...inputStyle, marginBottom: 14 }} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Button variant="secondary" style={{ flex: 1, justifyContent: "center" }} onClick={() => setEditingPw(null)}>Cancel</Button>
+                  <Button style={{ flex: 1, justifyContent: "center" }} onClick={handleResetPw} disabled={saving || !editingPw.pw}>{saving ? "Saving…" : "Save"}</Button>
                 </div>
-              </div>
+              </Modal>
             )}
           </div>
         )}
@@ -407,74 +362,70 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
               <div>
-                <h1 style={{ fontFamily: "serif", fontSize: 22, color: "#0C3D26", margin: "0 0 4px", fontWeight: 600 }}>Tutor Groups</h1>
-                <p style={{ color: "#6B7280", fontSize: 13, margin: 0 }}>Assign students to groups so their tutor can monitor progress.</p>
+                <h1 style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--green-700)", margin: "0 0 4px", fontWeight: 600 }}>Tutor Groups</h1>
+                <p style={{ color: "var(--ink-500)", fontSize: 13, margin: 0 }}>Assign students to groups so their tutor can monitor progress.</p>
               </div>
-              <button onClick={() => { setShowNewGroup(true); setGroupForm(EMPTY_GROUP) }}
-                style={{ background: "#0C3D26", color: "#fff", border: "none", borderRadius: 8, padding: "9px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                + New Group
-              </button>
+              <Button onClick={() => { setShowNewGroup(true); setGroupForm(EMPTY_GROUP) }}>+ New Group</Button>
             </div>
 
             {showNewGroup && (
-              <div style={{ background: "#fff", borderRadius: 12, padding: "20px 24px", border: "1.5px solid #0C3D26", marginBottom: 20 }}>
-                <h3 style={{ fontFamily: "serif", fontSize: 17, color: "#0C3D26", margin: "0 0 14px", fontWeight: 600 }}>New Tutor Group</h3>
+              <div style={{ background: "#fff", borderRadius: "var(--radius-xl)", padding: "20px 24px", border: "1.5px solid var(--green-700)", marginBottom: 20 }}>
+                <h3 style={{ fontFamily: "var(--font-display)", fontSize: 17, color: "var(--green-700)", margin: "0 0 14px", fontWeight: 600 }}>New Tutor Group</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", display: "block", marginBottom: 5, letterSpacing: "0.08em" }}>GROUP NAME</label>
-                    <input value={groupForm.name} onChange={e => setGroupForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Group A" style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 14, outline: "none" }} />
+                    <label style={label}>GROUP NAME</label>
+                    <input value={groupForm.name} onChange={e => setGroupForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Group A" style={inputStyle} />
                   </div>
                   <div>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", display: "block", marginBottom: 5, letterSpacing: "0.08em" }}>ASSIGN TUTOR</label>
-                    <select value={groupForm.tutorId} onChange={e => setGroupForm(p => ({ ...p, tutorId: e.target.value }))} style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 14, outline: "none", background: "#fff" }}>
+                    <label style={label}>ASSIGN TUTOR</label>
+                    <select value={groupForm.tutorId} onChange={e => setGroupForm(p => ({ ...p, tutorId: e.target.value }))} style={{ ...inputStyle, cursor: "pointer", background: "#fff" }}>
                       <option value="">Select a tutor…</option>
                       {tutors.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
-                    {tutors.length === 0 && <p style={{ fontSize: 11, color: "#B47E2A", marginTop: 4 }}>No tutors yet — create a Tutor account in Users first.</p>}
+                    {tutors.length === 0 && <p style={{ fontSize: 11, color: "var(--gold-700)", marginTop: 4 }}>No tutors yet — create a Tutor account in Users first.</p>}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => setShowNewGroup(false)} style={{ background: "#F3F4F6", color: "#374151", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, cursor: "pointer" }}>Cancel</button>
-                  <button onClick={handleCreateGroup} disabled={saving || !groupForm.name || !groupForm.tutorId}
-                    style={{ background: saving || !groupForm.name || !groupForm.tutorId ? "#E5E7EB" : "#0C3D26", color: saving || !groupForm.name || !groupForm.tutorId ? "#9CA3AF" : "#fff", border: "none", borderRadius: 8, padding: "9px 22px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  <Button variant="secondary" onClick={() => setShowNewGroup(false)}>Cancel</Button>
+                  <Button onClick={handleCreateGroup} disabled={saving || !groupForm.name || !groupForm.tutorId}>
                     {saving ? "Creating…" : "Create Group"}
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
 
             {groups.length === 0 && !showNewGroup && (
-              <div style={{ background: "#fff", borderRadius: 12, padding: "32px", border: "1px dashed #E2D9CC", textAlign: "center", color: "#9CA3AF" }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>🏫</div>
+              <div style={{ background: "#fff", borderRadius: "var(--radius-xl)", padding: "32px", border: "1px dashed var(--border-strong)", textAlign: "center", color: "var(--ink-400)" }}>
+                <Icon name="chalkboard-teacher" size={32} style={{ marginBottom: 8 }} />
                 <p style={{ fontSize: 14 }}>No groups yet. Create a group and assign a tutor to get started.</p>
               </div>
             )}
 
             {groups.map(g => (
-              <div key={g.id} style={{ background: "#fff", borderRadius: 12, border: "1px solid #E2D9CC", marginBottom: 16, overflow: "hidden" }}>
-                <div style={{ padding: "14px 20px", background: "#F7F3ED", borderBottom: "1px solid #E2D9CC", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div key={g.id} style={{ background: "#fff", borderRadius: "var(--radius-xl)", boxShadow: "var(--shadow-card)", marginBottom: 16, overflow: "hidden" }}>
+                <div style={{ padding: "14px 20px", background: "var(--surface-subtle)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div>
-                    <span style={{ fontFamily: "serif", fontSize: 17, fontWeight: 600, color: "#1A1A1A" }}>{g.name}</span>
-                    <span style={{ fontSize: 12, color: "#6B7280", marginLeft: 10 }}>Tutor: {g.tutor.name}</span>
+                    <span style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 600, color: "var(--ink-900)" }}>{g.name}</span>
+                    <span style={{ fontSize: 12, color: "var(--ink-500)", marginLeft: 10 }}>Tutor: {g.tutor.name}</span>
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span style={{ fontSize: 12, color: "#6B7280" }}>{g.members.length} student{g.members.length !== 1 ? "s" : ""}</span>
-                    <button onClick={() => handleDeleteGroup(g.id, g.name)} style={{ background: "#FEE2E2", color: "#B91C1C", border: "none", borderRadius: 6, padding: "4px 12px", fontSize: 11, cursor: "pointer", fontWeight: 500 }}>Delete</button>
+                    <span style={{ fontSize: 12, color: "var(--ink-500)" }}>{g.members.length} student{g.members.length !== 1 ? "s" : ""}</span>
+                    <Button size="sm" variant="danger" onClick={() => handleDeleteGroup(g.id, g.name)}>Delete</Button>
                   </div>
                 </div>
                 <div style={{ padding: "14px 20px" }}>
                   {g.members.map(m => (
-                    <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 0", borderBottom: "1px solid #F0EAE0" }}>
+                    <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 0", borderBottom: "1px solid var(--surface-sunken)" }}>
                       <div>
-                        <span style={{ fontSize: 13, fontWeight: 500, color: "#1A1A1A" }}>{m.name}</span>
-                        <span style={{ fontSize: 11, color: "#9CA3AF", marginLeft: 8 }}>{m.email}</span>
+                        <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink-900)" }}>{m.name}</span>
+                        <span style={{ fontSize: 11, color: "var(--ink-400)", marginLeft: 8 }}>{m.email}</span>
                       </div>
-                      <button onClick={() => handleAssign(m.id, "")} style={{ fontSize: 11, padding: "3px 10px", borderRadius: 6, border: "none", background: "#FEE2E2", color: "#B91C1C", cursor: "pointer" }}>Remove</button>
+                      <Button size="sm" variant="danger" onClick={() => handleAssign(m.id, "")}>Remove</Button>
                     </div>
                   ))}
                   <div style={{ marginTop: 12 }}>
                     <select defaultValue="" onChange={e => { if (e.target.value) { handleAssign(e.target.value, g.id); e.target.value = "" } }}
-                      style={{ padding: "6px 12px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 13, outline: "none", background: "#fff", color: "#374151" }}>
+                      style={{ padding: "6px 12px", borderRadius: "var(--radius-md)", border: "1.5px solid var(--border)", fontSize: 13, outline: "none", background: "#fff", color: "var(--ink-700)", cursor: "pointer" }}>
                       <option value="">+ Assign a student…</option>
                       {students.filter(s => !g.members.find(m => m.id === s.id)).map(s => (
                         <option key={s.id} value={s.id}>{s.name} ({s.email})</option>
@@ -490,14 +441,14 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
         {/* GRADING */}
         {tab === "grading" && (
           <div style={{ maxWidth: 860 }}>
-            <h1 style={{ fontFamily: "serif", fontSize: 22, color: "#0C3D26", margin: "0 0 4px", fontWeight: 600 }}>Assessment Grading</h1>
-            <p style={{ color: "#6B7280", fontSize: 13, margin: "0 0 20px" }}>
+            <h1 style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "var(--green-700)", margin: "0 0 4px", fontWeight: 600 }}>Assessment Grading</h1>
+            <p style={{ color: "var(--ink-500)", fontSize: 13, margin: "0 0 20px" }}>
               Grades flow: faculty marks → a second person reviews → you publish to the student. Nothing is visible to students until you publish it.
             </p>
 
             {gradeQueue.length === 0 && (
-              <div style={{ background: "#fff", borderRadius: 12, padding: "36px", border: "1px dashed #E2D9CC", textAlign: "center", color: "#9CA3AF" }}>
-                <div style={{ fontSize: 32, marginBottom: 10 }}>⚖️</div>
+              <div style={{ background: "#fff", borderRadius: "var(--radius-xl)", padding: "36px", border: "1px dashed var(--border-strong)", textAlign: "center", color: "var(--ink-400)" }}>
+                <Icon name="scales" size={32} style={{ marginBottom: 10 }} />
                 <p style={{ fontSize: 14 }}>Nothing waiting. Grades appear here once faculty mark student submissions.</p>
               </div>
             )}
@@ -507,52 +458,47 @@ export default function AdminView({ users, groups, modules, tutors, facultyAssig
               if (items.length === 0) return null
               return (
                 <div key={section} style={{ marginBottom: 26 }}>
-                  <h2 style={{ fontFamily: "serif", fontSize: 17, color: "#1A1A1A", margin: "0 0 12px", fontWeight: 600 }}>
-                    {section === "APPROVED" ? `✅ Ready to publish (${items.length})` : `👀 Awaiting review (${items.length})`}
+                  <h2 style={{ fontFamily: "var(--font-display)", fontSize: 17, color: "var(--ink-900)", margin: "0 0 12px", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+                    <Icon name={section === "APPROVED" ? "check-circle" : "eye"} size={16} color={section === "APPROVED" ? "var(--success-700)" : "var(--ink-500)"} />
+                    {section === "APPROVED" ? `Ready to publish (${items.length})` : `Awaiting review (${items.length})`}
                   </h2>
                   {items.map(g => (
-                    <div key={g.gradeId} style={{ background: "#fff", borderRadius: 12, border: "1px solid #E2D9CC", marginBottom: 12, padding: "16px 20px" }}>
+                    <div key={g.gradeId} style={{ background: "#fff", borderRadius: "var(--radius-xl)", boxShadow: "var(--shadow-card)", marginBottom: 12, padding: "16px 20px" }}>
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ marginBottom: 4 }}>
-                            <span style={{ fontWeight: 600, fontSize: 14, color: "#1A1A1A" }}>{g.studentName}</span>
-                            {g.studentIdNumber && <span style={{ fontSize: 11, color: "#B47E2A", fontWeight: 600, marginLeft: 8 }}>ID: {g.studentIdNumber}</span>}
-                            <span style={{ fontSize: 12, color: "#6B7280", marginLeft: 8 }}>{g.moduleCode} · {g.assessmentTitle}</span>
+                            <span style={{ fontWeight: 600, fontSize: 14, color: "var(--ink-900)" }}>{g.studentName}</span>
+                            {g.studentIdNumber && <span style={{ fontSize: 11, color: "var(--gold-700)", fontWeight: 600, marginLeft: 8 }}>ID: {g.studentIdNumber}</span>}
+                            <span style={{ fontSize: 12, color: "var(--ink-500)", marginLeft: 8 }}>{g.moduleCode} · {g.assessmentTitle}</span>
                           </div>
-                          <div style={{ fontSize: 12, color: "#6B7280", marginBottom: g.feedback ? 8 : 0 }}>
-                            Marked <strong style={{ color: "#1A3A6B" }}>{g.mark}/{g.maxMark}</strong> by {g.markerName}
+                          <div style={{ fontSize: 12, color: "var(--ink-500)", marginBottom: g.feedback ? 8 : 0 }}>
+                            Marked <strong style={{ color: "var(--blue-700)" }}>{g.mark}/{g.maxMark}</strong> by {g.markerName}
                             {g.reviewerName && <> · Reviewed by {g.reviewerName}</>}
                             {g.draftedAt && <> · {new Date(g.draftedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</>}
                           </div>
                           {g.feedback && (
-                            <div style={{ fontSize: 12.5, color: "#374151", background: "#F7F3ED", borderRadius: 8, padding: "8px 12px", lineHeight: 1.6 }}>{g.feedback}</div>
+                            <div style={{ fontSize: 12.5, color: "var(--ink-700)", background: "var(--surface-subtle)", borderRadius: "var(--radius-md)", padding: "8px 12px", lineHeight: 1.6 }}>{g.feedback}</div>
                           )}
                         </div>
                         <div style={{ flexShrink: 0 }}>
                           {g.status === "APPROVED" ? (
-                            <button onClick={() => handlePublishGrade(g)} disabled={saving}
-                              style={{ background: "#0C3D26", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                              Publish to Student
-                            </button>
+                            <Button size="sm" onClick={() => handlePublishGrade(g)} disabled={saving}>Publish to Student</Button>
                           ) : (
-                            <button onClick={() => setReviewNoteFor(reviewNoteFor?.gradeId === g.gradeId ? null : { gradeId: g.gradeId, note: "" })}
-                              style={{ background: reviewNoteFor?.gradeId === g.gradeId ? "#FBF4E3" : "#EEF2F8", color: reviewNoteFor?.gradeId === g.gradeId ? "#92400E" : "#1A3A6B", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                              {reviewNoteFor?.gradeId === g.gradeId ? "Cancel" : "Review →"}
-                            </button>
+                            <Button size="sm" variant={reviewNoteFor?.gradeId === g.gradeId ? "secondary" : "outline"} onClick={() => setReviewNoteFor(reviewNoteFor?.gradeId === g.gradeId ? null : { gradeId: g.gradeId, note: "" })}>
+                              {reviewNoteFor?.gradeId === g.gradeId ? "Cancel" : "Review"}
+                            </Button>
                           )}
                         </div>
                       </div>
 
                       {g.status === "IN_REVIEW" && reviewNoteFor?.gradeId === g.gradeId && (
-                        <div style={{ marginTop: 12, borderTop: "1px solid #F0EAE0", paddingTop: 12 }}>
+                        <div style={{ marginTop: 12, borderTop: "1px solid var(--surface-sunken)", paddingTop: 12 }}>
                           <textarea value={reviewNoteFor.note} onChange={e => setReviewNoteFor({ gradeId: g.gradeId, note: e.target.value })}
                             rows={2} placeholder="Optional note if approving — required if returning to the marker."
-                            style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 13, resize: "vertical", outline: "none", fontFamily: "inherit", marginBottom: 10 }} />
+                            style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit", marginBottom: 10 }} />
                           <div style={{ display: "flex", gap: 8 }}>
-                            <button onClick={() => handleAdminReview(g, "approve")} disabled={saving}
-                              style={{ background: "#0C3D26", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>✓ Approve</button>
-                            <button onClick={() => handleAdminReview(g, "return")} disabled={saving}
-                              style={{ background: "#FEE2E2", color: "#B91C1C", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>↩ Return to Marker</button>
+                            <Button size="sm" onClick={() => handleAdminReview(g, "approve")} disabled={saving}>Approve</Button>
+                            <Button size="sm" variant="danger" onClick={() => handleAdminReview(g, "return")} disabled={saving}>Return to Marker</Button>
                           </div>
                         </div>
                       )}

@@ -5,6 +5,13 @@ import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import Link from "next/link"
 import { getStudentStatus, STUDENT_STATUS_STYLE } from "@/lib/studentStatus"
+import { Navbar } from "@/components/ui/Navbar"
+import { Avatar } from "@/components/ui/Avatar"
+import { Button } from "@/components/ui/Button"
+import { Icon } from "@/components/ui/Icon"
+import { StatCard } from "@/components/ui/StatCard"
+import { Table, TableRow } from "@/components/ui/Table"
+import { ProgressBar } from "@/components/ui/ProgressBar"
 
 export default async function TutorDashboard() {
   const session = await auth()
@@ -74,143 +81,118 @@ export default async function TutorDashboard() {
   const struggling = students.filter(s => s.status === "STRUGGLING").length
 
   return (
-    <div className="min-h-screen" style={{ background: "#F7F3ED" }}>
-      <header className="flex items-center justify-between px-8" style={{ background: "#0C3D26", height: 64 }}>
-        <div className="flex items-center gap-3">
-          <span className="text-xl">🏥</span>
-          <div>
-            <div className="text-white font-semibold" style={{ fontFamily: "serif", fontSize: 17, lineHeight: 1.2 }}>Northern Medical School</div>
-            <div style={{ color: "#7DB899", fontSize: 10, letterSpacing: "0.14em" }}>TUTOR — STUDENT SUPERVISION</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <div className="text-white font-medium" style={{ fontSize: 13 }}>{tutorName}</div>
-            <div style={{ color: "#7DB899", fontSize: 11 }}>{group ? group.name : "No group assigned"}</div>
-          </div>
-          <div className="flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0"
-            style={{ width: 34, height: 34, background: "#5A2800" }}>
-            {(tutorName ?? "T")[0]}
-          </div>
-          <Link href="/profile" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", borderRadius: 20, padding: "4px 12px", fontSize: 11, textDecoration: "none" }}>Profile</Link>
-          <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }) }}>
-            <button type="submit" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", border: "none", borderRadius: 20, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>Sign out</button>
-          </form>
-        </div>
-      </header>
+    <div style={{ minHeight: "100vh", background: "var(--surface-subtle)" }}>
+      <Navbar
+        subtitle="TUTOR — STUDENT SUPERVISION"
+        userName={tutorName}
+        userSub={group ? group.name : "No group assigned"}
+        right={
+          <>
+            <Avatar name={tutorName} bg="var(--brown-700)" />
+            <Link href="/profile" style={{ textDecoration: "none" }}><Button variant="ghostDark" size="sm">Profile</Button></Link>
+            <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }) }}>
+              <Button type="submit" variant="ghostDark" size="sm">Sign out</Button>
+            </form>
+          </>
+        }
+      />
 
-      <main className="max-w-5xl mx-auto px-7 py-8">
+      <main style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 28px" }}>
         {!group && (
-          <div className="bg-white rounded-2xl p-10 text-center" style={{ border: "1px solid #E2D9CC" }}>
-            <div style={{ fontSize: 40, marginBottom: 14 }}>🏫</div>
-            <h1 style={{ fontFamily: "serif", fontSize: 22, color: "#0C3D26", margin: "0 0 8px", fontWeight: 600 }}>No group assigned yet</h1>
-            <p style={{ color: "#6B7280", fontSize: 14, maxWidth: 400, margin: "0 auto" }}>Contact the School Administrator to get set up.</p>
+          <div style={{ background: "#fff", borderRadius: "var(--radius-xl)", padding: 40, textAlign: "center", boxShadow: "var(--shadow-card)" }}>
+            <Icon name="chalkboard-teacher" size={40} color="var(--ink-400)" style={{ marginBottom: 14 }} />
+            <h1 style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--green-700)", margin: "0 0 8px", fontWeight: 600 }}>No group assigned yet</h1>
+            <p style={{ color: "var(--ink-500)", fontSize: 14, maxWidth: 400, margin: "0 auto" }}>Contact the School Administrator to get set up.</p>
           </div>
         )}
 
         {group && (
           <>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 26 }}>
-              {[
-                { icon: "👥", value: students.length, label: "Students in group" },
-                { icon: "✅", value: onTrack,          label: "On track"          },
-                { icon: "⚠️", value: struggling,       label: "Need attention"    },
-                { icon: "📚", value: "Year 1",         label: group.name          },
-              ].map((s, i) => (
-                <div key={i} style={{ background: "#fff", borderRadius: 12, padding: "16px 18px", border: i === 2 && struggling > 0 ? "1.5px solid #FCA5A5" : "1px solid #E2D9CC", display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontSize: 22 }}>{s.icon}</span>
-                  <div>
-                    <div style={{ fontSize: 24, fontWeight: 700, color: i === 2 && struggling > 0 ? "#B91C1C" : "#0C3D26", fontFamily: "serif", lineHeight: 1 }}>{s.value}</div>
-                    <div style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>{s.label}</div>
-                  </div>
-                </div>
-              ))}
+              <StatCard icon="users" value={students.length} label="Students in group" />
+              <StatCard icon="check-circle" value={onTrack} label="On track" />
+              <StatCard icon="warning" value={struggling} label="Need attention" emphasis={struggling > 0} />
+              <StatCard icon="books" value="Year 1" label={group.name} />
             </div>
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <h2 style={{ fontFamily: "serif", fontSize: 18, color: "#1A1A1A", margin: 0, fontWeight: 600 }}>Student Progress</h2>
-              <Link href="/dashboard/tutor/students" style={{ fontSize: 12, color: "#1A3A6B", fontWeight: 600, textDecoration: "none", background: "#EEF2F8", padding: "6px 14px", borderRadius: 8 }}>👥 View All Students (school-wide)</Link>
+              <h2 style={{ fontFamily: "var(--font-display)", fontSize: 17, color: "var(--ink-900)", margin: 0, fontWeight: 600 }}>Student Progress</h2>
+              <Link href="/dashboard/tutor/students" style={{ fontSize: 12, color: "var(--blue-700)", fontWeight: 600, textDecoration: "none", background: "var(--blue-100)", padding: "6px 14px", borderRadius: "var(--radius-md)", display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="users" size={14} /> View All Students (school-wide)
+              </Link>
             </div>
 
             {students.length === 0 ? (
-              <div style={{ background: "#fff", borderRadius: 12, padding: "28px", border: "1px dashed #E2D9CC", textAlign: "center", color: "#9CA3AF", marginBottom: 28 }}>
+              <div style={{ background: "#fff", borderRadius: "var(--radius-xl)", padding: "28px", border: "1px dashed var(--border-strong)", textAlign: "center", color: "var(--ink-400)", marginBottom: 28 }}>
                 <p style={{ fontSize: 14 }}>No students assigned yet. Contact the Administrator.</p>
               </div>
             ) : (
-              <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E2D9CC", overflow: "hidden", marginBottom: 28 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ background: "#0C3D26" }}>
-                      {["Student", "Progress", "Current Module", "Last Activity", "Status"].map(h => (
-                        <th key={h} style={{ padding: "10px 16px", textAlign: "left", color: "#fff", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em" }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {students.map((s, i) => {
-                      const st  = STUDENT_STATUS_STYLE[s.status]
-                      const pct = s.progress.length > 0 ? Math.round((s.completed / s.progress.length) * 100) : 0
-                      const lastDate  = s.lastAttempt?.submittedAt
-                      const lastLabel = lastDate
-                        ? new Date(lastDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
-                        : "No activity"
-                      return (
-                        <tr key={s.id} style={{ background: i % 2 === 0 ? "#fff" : "#FAFAF8", borderBottom: "1px solid #F0EAE0" }}>
-                          <td style={{ padding: "12px 16px" }}>
-                            <Link href={`/dashboard/tutor/student/${s.id}`} style={{ textDecoration: "none" }}>
-                              <div style={{ fontWeight: 500, color: "#0C3D26" }}>{s.name}</div>
-                              <div style={{ fontSize: 11, color: "#9CA3AF" }}>{s.studentIdNumber ? `${s.studentIdNumber} · ` : ""}{s.email}</div>
-                            </Link>
-                          </td>
-                          <td style={{ padding: "12px 16px" }}>
-                            <div style={{ width: 100, height: 5, background: "#EDE8E0", borderRadius: 3, overflow: "hidden", marginBottom: 4 }}>
-                              <div style={{ height: "100%", width: `${pct}%`, background: "linear-gradient(90deg, #0C3D26, #2D7A50)", borderRadius: 3 }} />
-                            </div>
-                            <div style={{ fontSize: 11, color: "#6B7280" }}>{s.completed}/{s.progress.length} modules · {s.earnedCredits} credits</div>
-                          </td>
-                          <td style={{ padding: "12px 16px", color: "#374151", fontSize: 12 }}>
-                            {s.current ? `${s.current.module.code}: ${s.current.module.title}`
-                              : s.completed === s.progress.length && s.progress.length > 0
-                              ? <span style={{ color: "#0C3D26", fontWeight: 500 }}>All complete ✓</span>
-                              : <span style={{ color: "#C5BAB0" }}>Not enrolled</span>}
-                          </td>
-                          <td style={{ padding: "12px 16px", color: "#9CA3AF", fontSize: 12 }}>{lastLabel}</td>
-                          <td style={{ padding: "12px 16px" }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 100, background: st.bg, color: st.color }}>{st.label}</span>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+              <div style={{ marginBottom: 28 }}>
+                <Table columns={["Student", "Progress", "Current Module", "Last Activity", "Status"]}>
+                  {students.map((s, i) => {
+                    const st  = STUDENT_STATUS_STYLE[s.status]
+                    const pct = s.progress.length > 0 ? Math.round((s.completed / s.progress.length) * 100) : 0
+                    const lastDate  = s.lastAttempt?.submittedAt
+                    const lastLabel = lastDate
+                      ? new Date(lastDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+                      : "No activity"
+                    return (
+                      <TableRow key={s.id} index={i}>
+                        <td style={{ padding: "12px 16px" }}>
+                          <Link href={`/dashboard/tutor/student/${s.id}`} style={{ textDecoration: "none" }}>
+                            <div style={{ fontWeight: 500, color: "var(--green-700)" }}>{s.name}</div>
+                            <div style={{ fontSize: 11, color: "var(--ink-400)" }}>{s.studentIdNumber ? `${s.studentIdNumber} · ` : ""}{s.email}</div>
+                          </Link>
+                        </td>
+                        <td style={{ padding: "12px 16px" }}>
+                          <ProgressBar percent={pct} width={100} height={5} />
+                          <div style={{ fontSize: 11, color: "var(--ink-500)", marginTop: 4 }}>{s.completed}/{s.progress.length} modules · {s.earnedCredits} credits</div>
+                        </td>
+                        <td style={{ padding: "12px 16px", color: "var(--ink-700)", fontSize: 12 }}>
+                          {s.current ? `${s.current.module.code}: ${s.current.module.title}`
+                            : s.completed === s.progress.length && s.progress.length > 0
+                            ? <span style={{ color: "var(--green-700)", fontWeight: 500 }}>All complete</span>
+                            : <span style={{ color: "var(--ink-400)" }}>Not enrolled</span>}
+                        </td>
+                        <td style={{ padding: "12px 16px", color: "var(--ink-400)", fontSize: 12 }}>{lastLabel}</td>
+                        <td style={{ padding: "12px 16px" }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: "var(--radius-pill)", background: st.bg, color: st.color }}>{st.label}</span>
+                        </td>
+                      </TableRow>
+                    )
+                  })}
+                </Table>
               </div>
             )}
 
             {struggling > 0 && (
-              <div style={{ background: "#FEF3C7", border: "1px solid #F59E0B", borderRadius: 12, padding: "16px 20px", marginBottom: 28 }}>
-                <div style={{ fontWeight: 600, color: "#92400E", fontSize: 14, marginBottom: 6 }}>⚠ {struggling} student{struggling > 1 ? "s" : ""} need{struggling === 1 ? "s" : ""} attention</div>
-                <div style={{ fontSize: 13, color: "#78350F" }}>{students.filter(s => s.status === "STRUGGLING").map(s => s.name).join(", ")} — failed their latest quiz attempt.</div>
+              <div style={{ background: "var(--warning-100)", border: "1px solid var(--warning-700)", borderRadius: "var(--radius-xl)", padding: "16px 20px", marginBottom: 28, display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <Icon name="warning" size={18} color="var(--warning-700)" style={{ flexShrink: 0, marginTop: 1 }} />
+                <div>
+                  <div style={{ fontWeight: 600, color: "var(--warning-700)", fontSize: 14, marginBottom: 4 }}>{struggling} student{struggling > 1 ? "s" : ""} need{struggling === 1 ? "s" : ""} attention</div>
+                  <div style={{ fontSize: 13, color: "var(--warning-700)" }}>{students.filter(s => s.status === "STRUGGLING").map(s => s.name).join(", ")} — failed their latest quiz attempt.</div>
+                </div>
               </div>
             )}
 
-            <h2 style={{ fontFamily: "serif", fontSize: 18, color: "#1A1A1A", margin: "0 0 14px", fontWeight: 600 }}>Group Announcements</h2>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 17, color: "var(--ink-900)", margin: "0 0 14px", fontWeight: 600 }}>Group Announcements</h2>
 
-            <form action={postAnnouncement} style={{ background: "#fff", borderRadius: 12, padding: "20px 22px", border: "1px solid #E2D9CC", marginBottom: 16 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", display: "block", marginBottom: 8, letterSpacing: "0.08em" }}>POST TO {group.name.toUpperCase()}</label>
+            <form action={postAnnouncement} style={{ background: "#fff", borderRadius: "var(--radius-xl)", padding: "20px 22px", boxShadow: "var(--shadow-card)", marginBottom: 16 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-500)", display: "block", marginBottom: 8, letterSpacing: "0.08em" }}>POST TO {group.name.toUpperCase()}</label>
               <textarea name="content" rows={3} placeholder="Write a message, reminder, or update for your students…" required
-                style={{ width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 14, resize: "vertical", outline: "none", fontFamily: "inherit", marginBottom: 10 }} />
-              <button type="submit" style={{ background: "#0C3D26", color: "#fff", border: "none", borderRadius: 8, padding: "9px 22px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Post to Group</button>
+                style={{ width: "100%", padding: "10px 14px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", fontSize: 14, resize: "vertical", outline: "none", fontFamily: "inherit", marginBottom: 10, boxSizing: "border-box" }} />
+              <Button type="submit">Post to Group</Button>
             </form>
 
             {group.announcements.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {group.announcements.map(a => (
-                  <div key={a.id} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: "1px solid #E2D9CC" }}>
+                  <div key={a.id} style={{ background: "#fff", borderRadius: "var(--radius-lg)", padding: "14px 18px", boxShadow: "var(--shadow-card)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "#0C3D26" }}>{a.author.name}</span>
-                      <span style={{ fontSize: 11, color: "#9CA3AF" }}>{new Date(a.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--green-700)" }}>{a.author.name}</span>
+                      <span style={{ fontSize: 11, color: "var(--ink-400)" }}>{new Date(a.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
                     </div>
-                    <p style={{ fontSize: 14, color: "#374151", margin: 0, lineHeight: 1.6 }}>{a.content}</p>
+                    <p style={{ fontSize: 14, color: "var(--ink-700)", margin: 0, lineHeight: 1.6 }}>{a.content}</p>
                   </div>
                 ))}
               </div>
