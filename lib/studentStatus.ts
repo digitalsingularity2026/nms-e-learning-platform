@@ -17,8 +17,8 @@ export function getStudentStatus(
 }
 
 export const STUDENT_STATUS_STYLE: Record<StudentStatus, { bg: string; color: string; label: string }> = {
-  COMPLETED:   { bg: "#0C3D26", color: "#fff",    label: "✓ Completed" },
-  ON_TRACK:    { bg: "#E3F0E9", color: "#0C3D26", label: "On Track"    },
-  STRUGGLING:  { bg: "#FEF3C7", color: "#92400E", label: "Needs Help"  },
-  NOT_STARTED: { bg: "#F3F4F6", color: "#9CA3AF", label: "Not Started" },
+  COMPLETED:   { bg: "var(--green-700)",   color: "#fff",              label: "Completed"   },
+  ON_TRACK:    { bg: "var(--green-100)",   color: "var(--green-700)",  label: "On Track"     },
+  STRUGGLING:  { bg: "var(--warning-100)", color: "var(--warning-700)", label: "Needs Help"  },
+  NOT_STARTED: { bg: "var(--surface-sunken)", color: "var(--ink-400)", label: "Not Started"  },
 }

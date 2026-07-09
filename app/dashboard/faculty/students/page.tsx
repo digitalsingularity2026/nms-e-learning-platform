@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { getStudentRoster } from "@/lib/studentRoster"
 import StudentRosterView from "@/components/StudentRosterView"
+import { Icon } from "@/components/ui/Icon"
 
 export default async function FacultyStudentsPage() {
   const session = await auth()
@@ -11,19 +12,21 @@ export default async function FacultyStudentsPage() {
   const students = await getStudentRoster()
 
   return (
-    <div className="min-h-screen" style={{ background: "#F7F3ED" }}>
-      <header className="flex items-center justify-between px-8" style={{ background: "#0C3D26", height: 60 }}>
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/faculty" style={{ color: "#7DB899", fontSize: 13, textDecoration: "none" }}>← My Modules</Link>
-          <span style={{ color: "#2D5E40" }}>|</span>
+    <div style={{ minHeight: "100vh", background: "var(--surface-subtle)" }}>
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", background: "var(--green-700)", height: 60 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Link href="/dashboard/faculty" style={{ color: "var(--text-on-dark-muted)", fontSize: 13, textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+            <Icon name="arrow-left" size={13} /> My Modules
+          </Link>
+          <span style={{ color: "var(--green-600)" }}>|</span>
           <span style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>All Students</span>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-7 py-8">
-        <div className="mb-6">
-          <h1 className="font-semibold mb-1" style={{ fontSize: 22, color: "#0C3D26", fontFamily: "serif" }}>All Students</h1>
-          <p style={{ color: "#6B7280", fontSize: 13 }}>School-wide progress overview, read-only — across all modules and years.</p>
+      <main style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 28px" }}>
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--ink-900)", margin: "0 0 4px", fontWeight: 600 }}>All Students</h1>
+          <p style={{ color: "var(--ink-500)", fontSize: 13, margin: 0 }}>School-wide progress overview, read-only — across all modules and years.</p>
         </div>
         <StudentRosterView students={students} />
       </main>

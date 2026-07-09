@@ -3,10 +3,15 @@ import { signOut } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import Link from "next/link"
+import { Navbar } from "@/components/ui/Navbar"
+import { Avatar } from "@/components/ui/Avatar"
+import { Button } from "@/components/ui/Button"
+import { Icon } from "@/components/ui/Icon"
+import { Badge } from "@/components/ui/Badge"
 
 const MOD_ICON: Record<string, string> = {
-  "ENG-101": "📖", "CHEM-101": "⚗️", "PHYS-101": "⚡",
-  "BIO-101": "🧬", "STUDY-101": "📚", "ETH-101": "⚖️",
+  "ENG-101": "book-open", "CHEM-101": "flask", "PHYS-101": "lightning",
+  "BIO-101": "dna", "STUDY-101": "books", "ETH-101": "scales",
 }
 
 export default async function FacultyDashboard() {
@@ -27,70 +32,62 @@ export default async function FacultyDashboard() {
   })
 
   return (
-    <div className="min-h-screen" style={{ background: "#F7F3ED" }}>
-      <header className="flex items-center justify-between px-8" style={{ background: "#0C3D26", height: 64 }}>
-        <div className="flex items-center gap-3">
-          <span className="text-xl">🏥</span>
-          <div>
-            <div className="text-white font-semibold" style={{ fontFamily: "serif", fontSize: 17, lineHeight: 1.2 }}>Northern Medical School</div>
-            <div style={{ color: "#7DB899", fontSize: 10, letterSpacing: "0.14em" }}>FACULTY — CONTENT MANAGEMENT</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <div className="text-white font-medium" style={{ fontSize: 13 }}>{session.user.name}</div>
-            <div style={{ color: "#7DB899", fontSize: 11 }}>Faculty Member</div>
-          </div>
-          <div className="flex items-center justify-center rounded-full text-white font-bold text-sm shrink-0" style={{ width: 34, height: 34, background: "#1A3A6B" }}>
-            {(session.user.name ?? "F")[0]}
-          </div>
-          <Link href="/profile" className="text-xs px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", textDecoration: "none" }}>Profile</Link>
-          <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }) }}>
-            <button type="submit" className="text-xs px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", border: "none", cursor: "pointer" }}>Sign out</button>
-          </form>
-        </div>
-      </header>
+    <div style={{ minHeight: "100vh", background: "var(--surface-subtle)" }}>
+      <Navbar
+        subtitle="FACULTY — CONTENT MANAGEMENT"
+        userName={session.user.name}
+        userSub="Faculty Member"
+        right={
+          <>
+            <Avatar name={session.user.name} bg="var(--gold-600)" />
+            <Link href="/profile" style={{ textDecoration: "none" }}><Button variant="ghostDark" size="sm">Profile</Button></Link>
+            <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }) }}>
+              <Button type="submit" variant="ghostDark" size="sm">Sign out</Button>
+            </form>
+          </>
+        }
+      />
 
-      <main className="max-w-4xl mx-auto px-7 py-8">
-        <div className="mb-6 flex items-center justify-between">
+      <main style={{ maxWidth: 860, margin: "0 auto", padding: "32px 28px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
           <div>
-            <h1 className="font-semibold mb-1" style={{ fontSize: 24, color: "#0C3D26", fontFamily: "serif" }}>My Modules</h1>
-            <p style={{ color: "#6B7280", fontSize: 13 }}>Click a module to manage its lessons, videos, and quiz questions.</p>
+            <h1 style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--ink-900)", margin: "0 0 4px", fontWeight: 600 }}>My Modules</h1>
+            <p style={{ color: "var(--ink-500)", fontSize: 13, margin: 0 }}>Click a module to manage its lessons, videos, and quiz questions.</p>
           </div>
-          <Link href="/dashboard/faculty/students" style={{ fontSize: 13, color: "#1A3A6B", fontWeight: 600, textDecoration: "none", background: "#EEF2F8", padding: "8px 16px", borderRadius: 8 }}>👥 All Students</Link>
+          <Link href="/dashboard/faculty/students" style={{ fontSize: 13, color: "var(--blue-700)", fontWeight: 600, textDecoration: "none", background: "var(--blue-100)", padding: "8px 16px", borderRadius: "var(--radius-md)", display: "flex", alignItems: "center", gap: 6 }}>
+            <Icon name="users" size={15} /> All Students
+          </Link>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {assignments.length === 0 && (
-            <div className="bg-white rounded-xl p-6" style={{ border: "1px solid #E2D9CC" }}>
-              <p style={{ color: "#6B7280" }}>No modules assigned yet. Contact your administrator.</p>
+            <div style={{ background: "#fff", borderRadius: "var(--radius-md)", padding: 24, boxShadow: "var(--shadow-card)" }}>
+              <p style={{ color: "var(--ink-500)", margin: 0 }}>No modules assigned yet. Contact your administrator.</p>
             </div>
           )}
           {assignments.map(({ module }) => (
-            <Link key={module.id} href={`/dashboard/faculty/module/${module.id}`} style={{ textDecoration: "none" }}>
-              <div className="bg-white rounded-xl px-6 py-5 flex items-center justify-between transition-all duration-150 hover:shadow-md" style={{ border: "1px solid #E2D9CC", cursor: "pointer" }}>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center justify-center rounded-lg text-2xl" style={{ width: 48, height: 48, background: "#F7F3ED" }}>
-                    {MOD_ICON[module.code] ?? "📄"}
+            <Link key={module.id} href={`/dashboard/faculty/module/${module.id}`} className="card-hover" style={{ textDecoration: "none", borderRadius: "var(--radius-md)" }}>
+              <div style={{ background: "#fff", borderRadius: "var(--radius-md)", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "var(--shadow-card)", cursor: "pointer" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: "var(--radius-md)", background: "var(--surface-subtle)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Icon name={MOD_ICON[module.code] ?? "file-text"} size={21} color="var(--green-700)" />
                   </div>
                   <div>
-                    <div className="font-semibold" style={{ fontFamily: "serif", fontSize: 17, color: "#1A1A1A" }}>{module.title}</div>
-                    <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2, letterSpacing: "0.05em" }}>{module.code}</div>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--ink-900)", fontWeight: 600 }}>{module.title}</div>
+                    <div style={{ fontSize: 11, color: "var(--ink-400)", marginTop: 2, letterSpacing: "0.04em" }}>{module.code}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-6 text-sm shrink-0">
-                  <div className="text-center">
-                    <div className="font-bold" style={{ fontSize: 18, color: "#0C3D26" }}>{module._count.lessons}</div>
-                    <div style={{ fontSize: 11, color: "#9CA3AF" }}>lessons</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 24, fontSize: 13, flexShrink: 0 }}>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontWeight: 600, fontSize: 17, color: "var(--green-700)" }}>{module._count.lessons}</div>
+                    <div style={{ fontSize: 11, color: "var(--ink-400)" }}>lessons</div>
                   </div>
-                  <div className="text-center">
-                    <div className="font-bold" style={{ fontSize: 18, color: "#0C3D26" }}>{module.quiz?._count.questions ?? 0}</div>
-                    <div style={{ fontSize: 11, color: "#9CA3AF" }}>questions</div>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontWeight: 600, fontSize: 17, color: "var(--green-700)" }}>{module.quiz?._count.questions ?? 0}</div>
+                    <div style={{ fontSize: 11, color: "var(--ink-400)" }}>questions</div>
                   </div>
-                  <span style={{ background: module.isPublished ? "#E3F0E9" : "#F3F4F6", color: module.isPublished ? "#0C3D26" : "#6B7280", fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 100 }}>
-                    {module.isPublished ? "PUBLISHED" : "DRAFT"}
-                  </span>
-                  <span style={{ color: "#9CA3AF", fontSize: 18 }}>→</span>
+                  <Badge status={module.isPublished ? "published" : "draft"}>{module.isPublished ? "Published" : "Draft"}</Badge>
+                  <Icon name="arrow-right" size={16} color="var(--ink-400)" />
                 </div>
               </div>
             </Link>

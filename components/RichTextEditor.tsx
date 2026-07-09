@@ -40,26 +40,26 @@ export default function RichTextEditor({ content, onChange }: Props) {
     <button
       type="button"
       onMouseDown={e => { e.preventDefault(); onClick() }}
-      style={{ padding: "4px 9px", borderRadius: 4, border: "none", cursor: "pointer", fontSize: 12, fontFamily: "inherit", fontWeight: 500, background: active ? "#E3F0E9" : "transparent", color: active ? "#0C3D26" : "#374151" }}
+      style={{ padding: "4px 9px", borderRadius: "var(--radius-xs)", border: "none", cursor: "pointer", fontSize: 12, fontFamily: "inherit", fontWeight: 500, background: active ? "var(--green-100)" : "transparent", color: active ? "var(--green-700)" : "var(--ink-700)" }}
     >{label}</button>
   )
 
   return (
-    <div style={{ border: "1.5px solid #E2D9CC", borderRadius: 10, overflow: "hidden", background: "#fff" }}>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 2, padding: "7px 10px", borderBottom: "1px solid #F0EAE0", background: "#FAFAF8" }}>
+    <div style={{ border: "1.5px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden", background: "#fff" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 2, padding: "7px 10px", borderBottom: "1px solid var(--surface-sunken)", background: "var(--surface-subtle)" }}>
         <Btn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive("bold")} label="B" />
         <Btn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive("italic")} label="I" />
-        <span style={{ width: 1, background: "#E2D9CC", margin: "2px 3px" }} />
+        <span style={{ width: 1, background: "var(--border)", margin: "2px 3px" }} />
         <Btn onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive("heading", { level: 2 })} label="H2" />
         <Btn onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive("heading", { level: 3 })} label="H3" />
-        <span style={{ width: 1, background: "#E2D9CC", margin: "2px 3px" }} />
+        <span style={{ width: 1, background: "var(--border)", margin: "2px 3px" }} />
         <Btn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")} label="• List" />
         <Btn onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive("orderedList")} label="1. List" />
-        <span style={{ width: 1, background: "#E2D9CC", margin: "2px 3px" }} />
+        <span style={{ width: 1, background: "var(--border)", margin: "2px 3px" }} />
         <Btn onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive("blockquote")} label="❝ Quote" />
         <Btn onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} active={false} label="⊞ Table" />
         <Btn onClick={() => editor.chain().focus().setHorizontalRule().run()} active={false} label="— Rule" />
-        <span style={{ width: 1, background: "#E2D9CC", margin: "2px 3px" }} />
+        <span style={{ width: 1, background: "var(--border)", margin: "2px 3px" }} />
         <Btn onClick={() => editor.chain().focus().undo().run()} active={false} label="↩" />
         <Btn onClick={() => editor.chain().focus().redo().run()} active={false} label="↪" />
       </div>

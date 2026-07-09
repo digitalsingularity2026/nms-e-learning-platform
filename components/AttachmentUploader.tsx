@@ -3,6 +3,8 @@
 import { useState } from "react"
 import { addLessonFile, removeLessonFile } from "@/app/actions/faculty"
 import { fileIcon, fileKindLabel, formatFileSize } from "@/lib/files"
+import { Icon } from "@/components/ui/Icon"
+import { Button } from "@/components/ui/Button"
 
 type Attachment = { id: string; title: string; url: string; mimeType: string | null; fileSizeBytes: number | null }
 
@@ -65,47 +67,49 @@ export default function AttachmentUploader({ lessonId, moduleId, existingFiles, 
   }
 
   return (
-    <div style={{ marginBottom: 16, background: "#fff", borderRadius: 10, padding: "16px 18px", border: "1px solid #E2D9CC" }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", marginBottom: 10, letterSpacing: "0.08em" }}>ATTACHMENTS — PDF, AUDIO & DOCUMENTS (OPTIONAL)</div>
+    <div style={{ marginBottom: 16, background: "#fff", borderRadius: "var(--radius-lg)", padding: "16px 18px", boxShadow: "var(--shadow-card)" }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-500)", marginBottom: 10, letterSpacing: "0.08em" }}>ATTACHMENTS — PDF, AUDIO & DOCUMENTS (OPTIONAL)</div>
 
       {!lessonId ? (
-        <p style={{ fontSize: 11, color: "#9CA3AF", margin: 0 }}>Save the lesson first, then add attachments.</p>
+        <p style={{ fontSize: 11, color: "var(--ink-400)", margin: 0 }}>Save the lesson first, then add attachments.</p>
       ) : (
         <>
           {existingFiles.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
               {existingFiles.map(f => (
-                <div key={f.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#F7F3ED", borderRadius: 8, padding: "8px 12px" }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>{fileIcon(f.mimeType, f.url)} {f.title}</div>
-                    <div style={{ fontSize: 11, color: "#9CA3AF" }}>
-                      {fileKindLabel(f.mimeType, f.url)}{f.fileSizeBytes ? ` · ${formatFileSize(f.fileSizeBytes)}` : ""}
+                <div key={f.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface-subtle)", borderRadius: "var(--radius-md)", padding: "8px 12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Icon name={fileIcon(f.mimeType, f.url)} size={15} color="var(--green-700)" />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{f.title}</div>
+                      <div style={{ fontSize: 11, color: "var(--ink-400)" }}>
+                        {fileKindLabel(f.mimeType, f.url)}{f.fileSizeBytes ? ` · ${formatFileSize(f.fileSizeBytes)}` : ""}
+                      </div>
                     </div>
                   </div>
-                  <button onClick={() => handleRemove(f.id)} style={{ background: "none", border: "none", color: "#B91C1C", fontSize: 13, cursor: "pointer" }}>✕</button>
+                  <button onClick={() => handleRemove(f.id)} style={{ background: "none", border: "none", color: "var(--error-700)", cursor: "pointer" }}><Icon name="x" size={14} /></button>
                 </div>
               ))}
             </div>
           )}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <input value={fileTitle} onChange={e => setFileTitle(e.target.value)} placeholder="Attachment title (e.g. Chapter 1 Handout, Pronunciation Drill 1)" style={{ padding: "8px 12px", borderRadius: 8, border: "1.5px solid #E2D9CC", fontSize: 13, outline: "none" }} />
-            <label style={{ padding: "10px 14px", borderRadius: 8, border: "1.5px dashed #E2D9CC", fontSize: 13, color: file ? "#0C3D26" : "#9CA3AF", cursor: "pointer", background: "#FAFAF8", textAlign: "center" as const, display: "block" }}>
+            <input value={fileTitle} onChange={e => setFileTitle(e.target.value)} placeholder="Attachment title (e.g. Chapter 1 Handout, Pronunciation Drill 1)" style={{ padding: "8px 12px", borderRadius: "var(--radius-md)", border: "1.5px solid var(--border)", fontSize: 13, outline: "none" }} />
+            <label style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", border: "1.5px dashed var(--border-strong)", fontSize: 13, color: file ? "var(--green-700)" : "var(--ink-400)", cursor: "pointer", background: "var(--surface-subtle)", textAlign: "center" as const, display: "block" }}>
               {file ? `${file.name}  (${formatFileSize(file.size)})` : "Click to select a file (PDF, audio, Word, slides…)"}
               <input type="file" accept={ACCEPT} onChange={e => setFile(e.target.files?.[0] ?? null)} style={{ display: "none" }} />
             </label>
             {file && (
-              <button onClick={handleUpload} disabled={uploading}
-                style={{ background: uploading ? "#E5E7EB" : "#0C3D26", color: uploading ? "#9CA3AF" : "#fff", border: "none", borderRadius: 8, padding: "9px 20px", fontSize: 13, fontWeight: 600, cursor: uploading ? "default" : "pointer" }}>
+              <Button onClick={handleUpload} disabled={uploading}>
                 {uploading ? `Uploading… ${progress}%` : "Upload to Platform"}
-              </button>
+              </Button>
             )}
             {uploading && (
-              <div style={{ height: 5, background: "#EDE8E0", borderRadius: 3, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${progress}%`, background: "linear-gradient(90deg, #0C3D26, #2D7A50)", transition: "width 0.2s ease" }} />
+              <div style={{ height: 5, background: "var(--surface-sunken)", borderRadius: 3, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${progress}%`, background: "var(--gradient-primary)", transition: "width 0.4s ease" }} />
               </div>
             )}
-            <p style={{ fontSize: 11, color: "#9CA3AF", margin: 0 }}>
+            <p style={{ fontSize: 11, color: "var(--ink-400)", margin: 0 }}>
               Audio files play inside the lesson; PDFs and documents appear as downloads for students.
             </p>
           </div>

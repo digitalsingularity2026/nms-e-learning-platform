@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma"
 import { redirect, notFound } from "next/navigation"
 import Link from "next/link"
 import FacultyModuleView from "./FacultyModuleView"
+import { Icon } from "@/components/ui/Icon"
+import { Button } from "@/components/ui/Button"
 
 export default async function FacultyModulePage({ params }: { params: Promise<{ moduleId: string }> }) {
   const session = await auth()
@@ -95,17 +97,19 @@ export default async function FacultyModulePage({ params }: { params: Promise<{ 
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-      <header className="flex items-center justify-between px-8" style={{ background: "#0C3D26", height: 60, flexShrink: 0 }}>
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/faculty" style={{ color: "#7DB899", fontSize: 13, textDecoration: "none" }}>← My Modules</Link>
-          <span style={{ color: "#2D5E40" }}>|</span>
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", background: "var(--green-700)", height: 60, flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Link href="/dashboard/faculty" style={{ color: "var(--text-on-dark-muted)", fontSize: 13, textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+            <Icon name="arrow-left" size={13} /> My Modules
+          </Link>
+          <span style={{ color: "var(--green-600)" }}>|</span>
           <span style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>{module.code}: {module.title}</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span style={{ color: "#fff", fontSize: 13 }}>{session.user.name}</span>
-          <Link href="/profile" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", borderRadius: 20, padding: "4px 12px", fontSize: 11, textDecoration: "none" }}>Profile</Link>
+          <Link href="/profile" style={{ textDecoration: "none" }}><Button variant="ghostDark" size="sm">Profile</Button></Link>
           <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }) }}>
-            <button type="submit" style={{ background: "rgba(255,255,255,0.1)", color: "#A8D4BE", border: "none", borderRadius: 20, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>Sign out</button>
+            <Button type="submit" variant="ghostDark" size="sm">Sign out</Button>
           </form>
         </div>
       </header>
