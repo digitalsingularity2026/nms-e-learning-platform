@@ -98,15 +98,15 @@ export default async function FacultyModulePage({ params }: { params: Promise<{ 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", background: "var(--green-700)", height: 60, flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/dashboard/faculty" style={{ color: "var(--text-on-dark-muted)", fontSize: 13, textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: "1 1 auto", overflow: "hidden" }}>
+          <Link href="/dashboard/faculty" style={{ color: "var(--text-on-dark-muted)", fontSize: 13, textDecoration: "none", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
             <Icon name="arrow-left" size={13} /> My Modules
           </Link>
-          <span style={{ color: "var(--green-600)" }}>|</span>
-          <span style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>{module.code}: {module.title}</span>
+          <span style={{ color: "var(--green-600)", flexShrink: 0 }}>|</span>
+          <span style={{ color: "#fff", fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{module.code}: {module.title}</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ color: "#fff", fontSize: 13 }}>{session.user.name}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <span className="hidden sm:inline" style={{ color: "#fff", fontSize: 13, whiteSpace: "nowrap" }}>{session.user.name}</span>
           <Link href="/profile" style={{ textDecoration: "none" }}><Button variant="ghostDark" size="sm">Profile</Button></Link>
           <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }) }}>
             <Button type="submit" variant="ghostDark" size="sm">Sign out</Button>
