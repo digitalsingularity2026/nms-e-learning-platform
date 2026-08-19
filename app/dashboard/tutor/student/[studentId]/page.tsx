@@ -1,10 +1,12 @@
 import { auth } from "@/auth"
+import { signOut } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect, notFound } from "next/navigation"
 import Link from "next/link"
 import { Icon } from "@/components/ui/Icon"
 import { Badge } from "@/components/ui/Badge"
 import { Table, TableRow } from "@/components/ui/Table"
+import { Button } from "@/components/ui/Button"
 
 export default async function TutorStudentDetailPage({ params }: { params: Promise<{ studentId: string }> }) {
   const session = await auth()
@@ -48,12 +50,19 @@ export default async function TutorStudentDetailPage({ params }: { params: Promi
   return (
     <div style={{ minHeight: "100vh", background: "var(--surface-subtle)" }}>
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", background: "var(--green-700)", height: 60 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/dashboard/tutor" style={{ color: "var(--text-on-dark-muted)", fontSize: 13, textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: "1 1 auto", overflow: "hidden" }}>
+          <Link href="/dashboard/tutor" style={{ color: "var(--text-on-dark-muted)", fontSize: 13, textDecoration: "none", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
             <Icon name="arrow-left" size={13} /> My Group
           </Link>
-          <span style={{ color: "var(--green-600)" }}>|</span>
-          <span style={{ color: "#fff", fontSize: 13, fontWeight: 500 }}>{student.name}</span>
+          <span style={{ color: "var(--green-600)", flexShrink: 0 }}>|</span>
+          <span style={{ color: "#fff", fontSize: 13, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{student.name}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <span className="hidden sm:inline" style={{ color: "#fff", fontSize: 13, whiteSpace: "nowrap" }}>{session.user.name}</span>
+          <Link href="/profile" style={{ textDecoration: "none" }}><Button variant="ghostDark" size="sm">Profile</Button></Link>
+          <form action={async () => { "use server"; await signOut({ redirectTo: "/login" }) }}>
+            <Button type="submit" variant="ghostDark" size="sm">Sign out</Button>
+          </form>
         </div>
       </header>
 
