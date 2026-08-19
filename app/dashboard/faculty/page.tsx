@@ -67,7 +67,7 @@ export default async function FacultyDashboard() {
           )}
           {assignments.map(({ module }) => (
             <Link key={module.id} href={`/dashboard/faculty/module/${module.id}`} className="card-hover" style={{ textDecoration: "none", borderRadius: "var(--radius-md)" }}>
-              <div style={{ background: "#fff", borderRadius: "var(--radius-md)", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "var(--shadow-card)", cursor: "pointer" }}>
+              <div style={{ background: "#fff", borderRadius: "var(--radius-md)", padding: "20px 24px", display: "flex", flexWrap: "wrap", rowGap: 12, alignItems: "center", justifyContent: "space-between", boxShadow: "var(--shadow-card)", cursor: "pointer" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                   <div style={{ width: 44, height: 44, borderRadius: "var(--radius-md)", background: "var(--surface-subtle)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <Icon name={MOD_ICON[module.code] ?? "file-text"} size={21} color="var(--green-700)" />
